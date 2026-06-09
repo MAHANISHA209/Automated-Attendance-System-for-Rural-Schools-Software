@@ -33,7 +33,7 @@ Secure Login System
 
 The Automated Attendance System for Rural Schools is designed to overcome the challenges of manual attendance management. The system should provide a simple, reliable, and cost-effective solution that can be used in schools with limited technical infrastructure.
 
-**Functional Requirements:**
+**Functional Requirements**
 
 Student registration and management.
 Teacher login and authentication.
@@ -42,13 +42,13 @@ Attendance report generation.
 Student attendance history tracking.
 Database storage for attendance records.
 
-**Non-Functional Requirements:**
+**Non-Functional Requirements**
 User-friendly interface.
 Fast attendance processing.
 Secure storage of student data.
 Low hardware and software requirements.
 
-**Technologies**
+**Technologies:**
 
 Frontend: HTML, CSS, JavaScript.
 Backend: Java.
