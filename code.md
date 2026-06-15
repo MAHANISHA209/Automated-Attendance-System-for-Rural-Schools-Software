@@ -2,11 +2,11 @@
 
 **db.php**
 
-<?php
+ <?php
 
-$conn = mysqli_connect("localhost","root","","attendance_db");
+ $conn = mysqli_connect("localhost","root","","attendance_db");
 
-if(!$conn)
+ if(!$conn)
 
 {
     die("Connection Failed");
