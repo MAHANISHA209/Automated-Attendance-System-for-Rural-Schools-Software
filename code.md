@@ -2,93 +2,65 @@
 
 **db.php**
 
- <?php
+<?php
+$conn = mysqli_connect("localhost", "root", "", "attendance_db");
 
- $conn = mysqli_connect("localhost","root","","attendance_db");
-
- if(!$conn)
-
-{
-    die("Connection Failed");
+if (!$conn) {
+    die("Connection failed: " . mysqli_connect_error());
 }
-
 ?>
-
 **login.php**
 
 <?php
-
 include("db.php");
+$message = "";
 
-$message="";
+if (isset($_POST['login'])) {
 
-if(isset($_POST['login']))
+    $username = $_POST['username'];
+    $password = $_POST['password'];
 
-{
-    $username=$_POST['username'];
-    
-    $password=$_POST['password'];
+    $sql = "SELECT * FROM users WHERE username='$username' AND password='$password'";
+    $result = mysqli_query($conn, $sql);
 
-    $sql="SELECT * FROM student WHERE username='$username' AND password='$password'";
-    
-    $result=mysqli_query($conn,$sql);
-
-    if(mysqli_num_rows($result)>0)
-    
-    {
-        $message="Login Successful";
+    if (mysqli_num_rows($result) > 0) {
+        $message = "Login Successful";
+    } else {
+        $message = "Invalid Username or Password";
     }
-    
-    else
-    
-    {
-        $message="Invalid Username or Password";
-    }
-    
 }
-
 ?>
 
 <!DOCTYPE html>
-
 <html>
-    
 <head>
-    
-<title>Login Page</title>
-
-<link rel="stylesheet" href="style.css">
-
+    <title>Login Page</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
 <div class="login-box">
+    <h2>Login</h2>
 
-<h2>Login</h2>
+    <form method="POST">
 
-<form method="POST">
+        <label>Username</label>
+        <input type="text" name="username" required>
 
-<label>Username</label><br>
-                           
-<input type="text" name="username" required><br><br>
+        <label>Password</label>
+        <input type="password" name="password" required>
 
-<label>Password</label><br>
+        <button type="submit" name="login">Login</button>
 
-<input type="password" name="password" required><br><br>
+    </form>
 
-<button type="submit" name="login">Login</button>
-
-</form>
-
-<p><?php echo $message; ?></p>
+    <p><?php echo $message; ?></p>
 
 </div>
 
 </body>
-
 </html>
-
 **style.css**
 
 body{
