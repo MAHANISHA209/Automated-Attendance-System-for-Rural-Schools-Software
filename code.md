@@ -146,6 +146,72 @@ button:hover{
     
 }
 
+.registration-box{
+
+    width:300px;
+    
+    margin:100px auto;
+    
+    padding:30px;
+    
+    background-color:white;
+    
+    border-radius:10px;
+    
+    box-shadow:0px 0px 10px gray;
+    
+    text-align: center;
+    
+}
+
+.dashboard{
+
+    width:400px;
+    
+    margin:100px auto;
+    
+    padding:20px;
+    
+    background:white;
+    
+    border-radius:5px;
+    
+    box-shadow:0px 0px 10px gray;
+    
+    text-align:center;
+    
+}
+
+.dashboard ul{
+
+    list-style:none;
+    
+    padding:0;
+    
+}
+
+.dashboard li{
+
+    margin:15px 0;
+    
+}
+
+.dashboard a{
+
+    text-decoration:none;
+    
+    color:white;
+    
+    background-color:rgb(215, 139, 101);
+    
+    padding:10px 20px;
+    
+    border-radius:5px;
+    
+    display:inline-block;
+    
+}
+
 
 **DAY 15:REGIRATION PAGE DEVELOPMENT**
 
@@ -218,6 +284,44 @@ if(isset($_POST['register']))
     </form>
 
     <p><?php echo $msg; ?></p>
+
+</div>
+
+</body>
+
+</html>
+
+**Day 16 : DASHBOARD DEVELOPMENT**
+
+<!DOCTYPE html>
+
+<html>
+    
+<head>
+    
+    <title>Dashboard</title>
+    
+    <link rel="stylesheet" href="style.css">
+    
+</head>
+
+<body>
+
+<div class="dashboard">
+
+<h1>Automated Attendance System</h1>
+
+<ul>
+    
+    <li><a href="registration.php">Student Registration</a></li>
+    
+    <li><a href="attendance.php">Mark Attendance</a></li>
+    
+    <li><a href="report.php">Attendance Report</a></li>
+    
+    <li><a href="login.php">Logout</a></li>
+    
+</ul>
 
 </div>
 
