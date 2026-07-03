@@ -612,11 +612,17 @@ tr:nth-child(even){
 **capture.py**
 
 <!DOCTYPE html>
+
 <html>
+    
 <head>
+    
     <title>Capture Face</title>
+    
     <link rel="stylesheet" href="style.css">
+    
 </head>
+
 <body>
 
 <div class="login-box">
@@ -628,8 +634,11 @@ tr:nth-child(even){
 <p>2. Run:</p>
 
 <pre>
+    
 cd /d C:\wamp\www\automated\face
+    
 python capture.py
+    
 </pre>
 
 <p>3. Enter Student Name</p>
@@ -639,18 +648,25 @@ python capture.py
 <br>
 
 <a href="dashboard.php">
+    
     <button>Back to Dashboard</button>
+    
 </a>
 
 </div>
 
 </body>
+
 </html>
 
 **train.py**
+
 import cv2
+
 import os
+
 import numpy as np
+
 import pickle
 
 recognizer = cv2.face.LBPHFaceRecognizer_create()
@@ -658,13 +674,16 @@ recognizer = cv2.face.LBPHFaceRecognizer_create()
 dataset_path = "dataset"
 
 face_cascade = cv2.CascadeClassifier(
+
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 )
 
 faces = []
+
 labels = []
 
 label_map = {}
+
 current_id = 0
 
 for person in sorted(os.listdir(dataset_path)):
@@ -672,6 +691,7 @@ for person in sorted(os.listdir(dataset_path)):
     person_path = os.path.join(dataset_path, person)
 
     if not os.path.isdir(person_path):
+    
         continue
 
     print("Training:", person)
@@ -685,16 +705,19 @@ for person in sorted(os.listdir(dataset_path)):
         img = cv2.imread(img_path)
 
         if img is None:
+        
             continue
 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         faces.append(cv2.resize(gray, (200, 200)))
+        
         labels.append(current_id)
 
     current_id += 1
 
 faces = np.array(faces)
+
 labels = np.array(labels)
 
 recognizer.train(faces, labels)
@@ -707,30 +730,39 @@ recognizer.save("trainer/trainer.yml")
 
 
 with open("trainer/labels.pkl", "wb") as f:
+
     pickle.dump(label_map, f)
 
 print("Training Completed Successfully")
+
 print("Label Map:", label_map)
 
 
 **recognize.py**
+
 import cv2
+
 import pickle
+
 import mysql.connector
+
 from datetime import datetime
 
 
 recognizer = cv2.face.LBPHFaceRecognizer_create()
+
 recognizer.read("trainer/trainer.yml")
 
 
 with open("trainer/labels.pkl", "rb") as f:
+
     label_map = pickle.load(f)
 
 label_map = {int(k): v for k, v in label_map.items()}
 
 
 face_cascade = cv2.CascadeClassifier(
+
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 )
 
@@ -739,19 +771,27 @@ def markAttendance(name):
 
     try:
         conn = mysql.connector.connect(
+        
             host="localhost",
+            
             user="root",
+            
             password="",
+            
             database="attendance_db"
+            
         )
 
         cursor = conn.cursor()
 
         today = datetime.now().strftime("%Y-%m-%d")
+        
         current_time = datetime.now().strftime("%H:%M:%S")
 
         cursor.execute(
+        
             "SELECT * FROM face_attendance WHERE student_name=%s AND attendance_date=%s",
+            
             (name, today)
         )
 
@@ -760,7 +800,9 @@ def markAttendance(name):
         if result is None:
 
             cursor.execute(
+            
                 "INSERT INTO face_attendance(student_name, attendance_date, attendance_time, status) VALUES (%s,%s,%s,%s)",
+                
                 (name, today, current_time, "Present")
             )
 
@@ -769,12 +811,15 @@ def markAttendance(name):
             print("✔ Attendance Saved :", name)
 
         else:
+        
             print("Attendance Already Marked :", name)
 
         cursor.close()
+        
         conn.close()
 
     except Exception as e:
+    
         print("DATABASE ERROR :", e)
 
 
@@ -797,6 +842,7 @@ while True:
     for (x, y, w, h) in faces:
 
         roi = gray[y:y+h, x:x+w]
+        
         roi = cv2.resize(roi, (200, 200))
 
         id_, confidence = recognizer.predict(roi)
@@ -806,30 +852,43 @@ while True:
             name = label_map.get(int(id_), "Unknown")
 
             if name not in marked:
+            
                 markAttendance(name)
+                
                 marked.add(name)
 
         else:
+        
             name = "Unknown"
 
         cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
 
         cv2.putText(
+        
             frame,
+            
             name,
+            
             (x, y-10),
+            
             cv2.FONT_HERSHEY_SIMPLEX,
+            
             0.8,
+            
             (0, 255, 0),
+            
             2
+            
         )
 
     cv2.imshow("Face Recognition", frame)
 
     if cv2.waitKey(1) == 27:
+    
         break
 
 cam.release()
+
 cv2.destroyAllWindows()
 
         
