@@ -277,32 +277,50 @@ python recognize.py
 **report.php**
 
 <?php
+
 include("db.php");
 
 $sql = "SELECT * FROM face_attendance ORDER BY id ASC";
+
 $result = mysqli_query($conn,$sql);
+
 ?>
 
 <!DOCTYPE html>
+
 <html>
+    
 <head>
+    
     <title>Attendance Report</title>
+    
     <link rel="stylesheet" href="style.css">
+    
     <style>
+    
 .login-box{
+
     width:1200px;
+    
     height:600px;
+    
     background-color:yellow;
+    
 }
 </style>
+
 </head>
+
 <body>
 
 <div class="login-box">
 
 <h2>Attendance Report</h2>
+
 <center>
+    
 <table  border="2px"  solid width="100px" height="100px">
+    
 <tr>
     
     <th>ID</th>
@@ -313,8 +331,11 @@ $result = mysqli_query($conn,$sql);
 </tr>
 
 <?php
+
 while($row = mysqli_fetch_assoc($result))
+
 {
+
 ?>
 <tr>
    
@@ -325,20 +346,25 @@ while($row = mysqli_fetch_assoc($result))
     <td><?php echo $row['status']; ?></td>
 
 </tr>
+
 <?php
 }
 ?>
 
 </table>
+
 </center>
 
 </div>
 
 </body>
+
 </html>
 
 **absent.php**
+
 <?php
+
 include("db.php");
 
 $today = date("Y-m-d");
@@ -351,23 +377,33 @@ while($row = mysqli_fetch_assoc($students))
     $name = trim($row['student_name']);
 
     // Check if attendance already exists for today
+    
     $check = mysqli_query($conn,
+    
     "SELECT * FROM face_attendance
+    
      WHERE student_name='$name'
+     
      AND attendance_date='$today'");
 
     // If not present, mark as Absent
+    
     if(mysqli_num_rows($check) == 0)
     {
         $sql = "INSERT INTO face_attendance
+        
         (student_name, attendance_date, attendance_time, status)
+        
         VALUES
+        
         ('$name', '$today', '00:00:00', 'Absent')";
 
         if(mysqli_query($conn, $sql))
+        
         {
             echo "<p style='color:green;'>$name marked Absent</p>";
         }
+        
         else
         {
             echo "<p style='color:red;'>Database Error: ".mysqli_error($conn)."</p>";
@@ -376,124 +412,205 @@ while($row = mysqli_fetch_assoc($students))
 }
 
 echo "<br><a href='report.php'><button>View Attendance Report</button></a>";
+
 ?>
+
 **db.php**
+
 <?php
+
 $conn = mysqli_connect("localhost","root","","attendance_db");
 
 if(!$conn)
+
 {
     die("Connection Failed");
 }
+
 ?>
+
 **style.css**
+
 body{
+
     margin:0;
+    
     padding:0;
+    
     font-family:Arial, Helvetica, sans-serif;
+    
     background:url("./images/images (3).jpg");
+    
     background-size:cover;
+    
     background-position:center;
+    
     background-repeat:no-repeat;
+    
 }
 
 .login-box,
+
 .registration-box,
+
 .dashboard{
+
     width:450px;
+    
     margin:60px auto;
+    
     padding:30px;
+    
     background:rgba(255,255,255,0.95);
+    
     border-radius:15px;
+    
     box-shadow:0 8px 20px rgba(0,0,0,0.3);
+    
 }
 
 h1,h2{
+
     text-align:center;
+    
     color:#00695c;
+    
     margin-bottom:25px;
+    
 }
 
 label{
+
     font-weight:bold;
+    
     display:block;
+    
     margin-top:10px;
+    
 }
 
+
 input[type=text],
+
 input[type=password],
+
 input[type=date]{
+
     width:100%;
+    
     padding:10px;
-    margin-top:5px;
+    
+    margin-top:5px
+    
     border:1px solid #ccc;
+    
     border-radius:6px;
+    
     box-sizing:border-box;
+    
 }
 
 button{
+
     width:100%;
+    
     padding:12px;
+    
     margin-top:15px;
+    
     background:#00897b;
+    
     color:white;
+    
     border:none;
+    
     border-radius:6px;
+    
     font-size:16px;
+    
     cursor:pointer;
+    
     transition:0.3s;
+    
 }
 
 button:hover{
+
     background:#00695c;
+    
 }
 
 .dashboard ul{
+
     list-style:none;
+    
     padding:0;
+    
 }
 
 .dashboard li{
+
     margin:18px 0;
 }
 
 .dashboard a{
+
     display:block;
+    
     text-decoration:none;
+    
     background:#1976d2;
+    
     color:white;
+    
     padding:15px;
+    
     border-radius:8px;
+    
     font-size:18px;
+    
     transition:.3s;
+    
 }
 
 .dashboard a:hover{
+
     background:#0d47a1;
+    
 }
 
 table{
+
     width:100%;
+    
     border-collapse:collapse;
+    
     background:white;
 }
 
 th{
     background:#1976d2;
+    
     color:white;
 }
 
 th,td{
     padding:12px;
+    
     border:1px solid #ddd;
+    
     text-align:center;
 }
 
 tr:nth-child(even){
+
     background:#f5f5f5;
+    
 }
+
 **face**
 **capture.py**
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -582,48 +699,42 @@ labels = np.array(labels)
 
 recognizer.train(faces, labels)
 
-# CREATE FOLDER IF NOT EXISTS
+
 os.makedirs("trainer", exist_ok=True)
 
-# SAVE MODEL
+
 recognizer.save("trainer/trainer.yml")
 
-# 🔥 IMPORTANT FIX: SAVE LABELS PROPERLY
+
 with open("trainer/labels.pkl", "wb") as f:
     pickle.dump(label_map, f)
 
 print("Training Completed Successfully")
 print("Label Map:", label_map)
+
+
 **recognize.py**
 import cv2
 import pickle
 import mysql.connector
 from datetime import datetime
 
-# ---------------------------
-# Load Model
-# ---------------------------
+
 recognizer = cv2.face.LBPHFaceRecognizer_create()
 recognizer.read("trainer/trainer.yml")
 
-# ---------------------------
-# Load Labels
-# ---------------------------
+
 with open("trainer/labels.pkl", "rb") as f:
     label_map = pickle.load(f)
 
 label_map = {int(k): v for k, v in label_map.items()}
 
-# ---------------------------
-# Face Detector
-# ---------------------------
+
 face_cascade = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 )
 
-# ---------------------------
-# Mark Attendance
-# ---------------------------
+
 def markAttendance(name):
 
     try:
@@ -667,9 +778,7 @@ def markAttendance(name):
         print("DATABASE ERROR :", e)
 
 
-# ---------------------------
-# Open Camera
-# ---------------------------
+
 cam = cv2.VideoCapture(0)
 
 marked = set()
