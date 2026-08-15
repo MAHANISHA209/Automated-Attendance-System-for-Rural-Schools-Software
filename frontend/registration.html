@@ -1,0 +1,586 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Student Registration</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #eef4ff;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .container {
+            width: 650px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        h1 {
+            color: #1d4ed8;
+        }
+
+        input {
+            width: 80%;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 7px;
+            margin: 15px;
+        }
+
+        button {
+            padding: 12px 22px;
+            margin: 8px;
+            border: none;
+            border-radius: 7px;
+            background: #2563eb;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        button:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+
+        video {
+            width: 480px;
+            height: 360px;
+            background: black;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        #progress {
+            font-size: 18px;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        #status {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Student Registration</h1>
+
+    <input
+        type="text"
+        id="studentName"
+        placeholder="Enter Student Name"
+    >
+
+    <br>
+
+    <button id="startButton" onclick="startCamera()">
+        Start Camera
+    </button>
+
+    <button
+        id="captureButton"
+        onclick="captureFaces()"
+        disabled
+    >
+        Capture 20 Faces
+    </button>
+
+    <br>
+
+    <video
+        id="camera"
+        autoplay
+        playsinline
+    ></video>
+
+    <div id="progress">
+        Images: 0 / 20
+    </div>
+
+    <div id="status">
+        Enter student name and start camera.
+    </div>
+
+</div>
+
+
+<script>
+
+    // ==========================================
+    // FLASK BACKEND URL
+    // ==========================================
+
+    const API_URL = "http://127.0.0.1:5000";
+
+
+    // ==========================================
+    // VARIABLES
+    // ==========================================
+
+    let video = document.getElementById("camera");
+
+    let stream = null;
+
+    let capturedImages = [];
+
+    const TOTAL_IMAGES = 20;
+
+
+    // ==========================================
+    // START CAMERA
+    // ==========================================
+
+    async function startCamera() {
+
+        const studentName =
+            document.getElementById("studentName")
+                .value
+                .trim();
+
+        if (studentName === "") {
+
+            alert("Please enter student name.");
+
+            return;
+        }
+
+        try {
+
+            stream =
+                await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: false
+                });
+
+            video.srcObject = stream;
+
+            document.getElementById("status").innerText =
+                "Camera started successfully.";
+
+            document.getElementById("captureButton")
+                .disabled = false;
+
+        }
+
+        catch (error) {
+
+            console.error(error);
+
+            document.getElementById("status").innerText =
+                "Camera access failed.";
+
+            alert(
+                "Please allow camera permission in your browser."
+            );
+
+        }
+
+    }
+
+
+    // ==========================================
+    // CAPTURE 20 IMAGES
+    // ==========================================
+
+    async function captureFaces() {
+
+        const studentName =
+            document.getElementById("studentName")
+                .value
+                .trim();
+
+        if (studentName === "") {
+
+            alert("Please enter student name.");
+
+            return;
+        }
+
+
+        if (!stream) {
+
+            alert("Please start the camera first.");
+
+            return;
+        }
+
+
+        capturedImages = [];
+
+
+        document.getElementById("captureButton")
+            .disabled = true;
+
+        document.getElementById("startButton")
+            .disabled = true;
+
+
+        document.getElementById("status").innerText =
+            "Capturing faces... Please look at the camera.";
+
+
+        // Create canvas
+
+        const canvas =
+            document.createElement("canvas");
+
+        canvas.width = 480;
+        canvas.height = 360;
+
+        const context =
+            canvas.getContext("2d");
+
+
+        // Capture 20 images
+
+        for (
+            let i = 0;
+            i < TOTAL_IMAGES;
+            i++
+        ) {
+
+            context.drawImage(
+                video,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+
+            const blob =
+                await new Promise(resolve => {
+
+                    canvas.toBlob(
+                        resolve,
+                        "image/jpeg",
+                        0.90
+                    );
+
+                });
+
+
+            capturedImages.push(blob);
+
+
+            document.getElementById("progress")
+                .innerText =
+                `Images: ${i + 1} / ${TOTAL_IMAGES}`;
+
+
+            // Small delay between captures
+
+            await sleep(300);
+
+        }
+
+
+        document.getElementById("status").innerText =
+            "20 images captured. Uploading...";
+
+
+        // Upload images
+
+        await uploadImages(studentName);
+
+    }
+
+
+    // ==========================================
+    // UPLOAD TO FLASK
+    // ==========================================
+
+    async function uploadImages(studentName) {
+
+        try {
+
+            const formData =
+                new FormData();
+
+
+            formData.append(
+                "student_name",
+                studentName
+            );
+
+
+            // Add all images
+
+            for (
+                let i = 0;
+                i < capturedImages.length;
+                i++
+            ) {
+
+                formData.append(
+                    "images",
+                    capturedImages[i],
+                    `${i + 1}.jpg`
+                );
+
+            }
+
+
+            // Send to Flask
+
+            const response =
+                await fetch(
+                    API_URL + "/register",
+                    {
+                        method: "POST",
+                        body: formData
+                    }
+                );
+
+
+            // Check server response
+
+            if (!response.ok) {
+
+                const text =
+                    await response.text();
+
+                console.error(
+                    "Server response:",
+                    text
+                );
+
+                throw new Error(
+                    "Server returned HTTP " +
+                    response.status
+                );
+
+            }
+
+
+            const data =
+                await response.json();
+
+
+            console.log(
+                "Registration response:",
+                data
+            );
+
+
+            if (data.status === "success") {
+
+                document.getElementById("status")
+                    .innerText =
+                    "Registration successful!";
+
+
+                alert(
+                    "Registration completed!\n\n" +
+                    "Student: " +
+                    data.student_name +
+                    "\nImages saved: " +
+                    data.images_saved
+                );
+
+
+                // Stop camera
+
+                stopCamera();
+
+
+                // Automatically train model
+
+                await trainModel();
+
+            }
+
+            else {
+
+                throw new Error(
+                    data.message ||
+                    "Registration failed."
+                );
+
+            }
+
+        }
+
+        catch (error) {
+
+            console.error(error);
+
+            document.getElementById("status")
+                .innerText =
+                "Registration failed: " +
+                error.message;
+
+            alert(
+                "Registration failed:\n" +
+                error.message
+            );
+
+
+            document.getElementById("captureButton")
+                .disabled = false;
+
+            document.getElementById("startButton")
+                .disabled = false;
+
+        }
+
+    }
+
+
+    // ==========================================
+    // TRAIN MODEL
+    // ==========================================
+
+    async function trainModel() {
+
+        document.getElementById("status")
+            .innerText =
+            "Training face recognition model...";
+
+
+        try {
+
+            const response =
+                await fetch(
+                    API_URL + "/train",
+                    {
+                        method: "POST"
+                    }
+                );
+
+
+            if (!response.ok) {
+
+                const text =
+                    await response.text();
+
+                console.error(
+                    "Training error:",
+                    text
+                );
+
+                throw new Error(
+                    "Training failed."
+                );
+
+            }
+
+
+            const data =
+                await response.json();
+
+
+            console.log(
+                "Training response:",
+                data
+            );
+
+
+            if (data.status === "success") {
+
+                document.getElementById("status")
+                    .innerText =
+                    "Registration and training completed successfully!";
+
+
+                alert(
+                    "Done!\n\n" +
+                    "Student registered successfully.\n" +
+                    "Face recognition model trained."
+                );
+
+            }
+
+            else {
+
+                throw new Error(
+                    data.message ||
+                    "Training failed."
+                );
+
+            }
+
+        }
+
+        catch (error) {
+
+            console.error(error);
+
+            document.getElementById("status")
+                .innerText =
+                "Registration completed, but training failed.";
+
+            alert(
+                "Student images were saved, but model training failed.\n\n" +
+                error.message
+            );
+
+        }
+
+    }
+
+
+    // ==========================================
+    // STOP CAMERA
+    // ==========================================
+
+    function stopCamera() {
+
+        if (stream) {
+
+            stream
+                .getTracks()
+                .forEach(track => track.stop());
+
+            stream = null;
+
+        }
+
+        video.srcObject = null;
+
+    }
+
+
+    // ==========================================
+    // DELAY FUNCTION
+    // ==========================================
+
+    function sleep(milliseconds) {
+
+        return new Promise(
+            resolve =>
+                setTimeout(
+                    resolve,
+                    milliseconds
+                )
+        );
+
+    }
+
+</script>
+
+</body>
+
+</html>
+```

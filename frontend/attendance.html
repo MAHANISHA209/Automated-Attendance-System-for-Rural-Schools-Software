@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Face Recognition Attendance</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #eef4ff;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .container {
+            width: 650px;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        }
+
+        h1 {
+            color: #1d4ed8;
+        }
+
+        button {
+            padding: 13px 25px;
+            margin: 10px;
+            border: none;
+            border-radius: 7px;
+            background: #2563eb;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        #status {
+            margin-top: 20px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Face Recognition Attendance</h1>
+
+    <p>
+        Click the button below to start face recognition.
+    </p>
+
+    <button onclick="startRecognition()">
+        Start Face Recognition
+    </button>
+
+    <button onclick="viewReport()">
+        View Attendance Report
+    </button>
+
+    <div id="status"></div>
+
+    <div id="result"></div>
+
+</div>
+
+<script>
+
+const API_URL = "http://127.0.0.1:5000";
+
+
+// ------------------------------------
+// START FACE RECOGNITION
+// ------------------------------------
+
+async function startRecognition() {
+
+    document.getElementById("status").innerText =
+        "Starting face recognition...";
+
+    document.getElementById("result").innerText = "";
+
+    try {
+
+        const response =
+            await fetch(
+                API_URL + "/recognize",
+                {
+                    method: "POST"
+                }
+            );
+
+        const data =
+            await response.json();
+
+        if (data.status === "success") {
+
+            document.getElementById("status").innerText =
+                "Face recognition completed.";
+
+            document.getElementById("result").innerText =
+                data.message;
+
+        } else {
+
+            document.getElementById("status").innerText =
+                "Recognition failed.";
+
+            document.getElementById("result").innerText =
+                data.message;
+        }
+
+    } catch (error) {
+
+        document.getElementById("status").innerText =
+            "Connection failed.";
+
+        document.getElementById("result").innerText =
+            error.message;
+    }
+}
+
+
+// ------------------------------------
+// REPORT
+// ------------------------------------
+
+function viewReport() {
+
+    window.location.href = "report.html";
+
+}
+
+</script>
+
+</body>
+</html>

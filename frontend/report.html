@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Attendance Report</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #eef4ff;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .container {
+            width: 900px;
+            max-width: 95%;
+            margin: auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        h1 {
+            color: #1d4ed8;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 25px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+
+        th {
+            background: #2563eb;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background: #f5f7ff;
+        }
+
+        .status {
+            margin: 20px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 7px;
+            background: #2563eb;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Attendance Report</h1>
+
+    <div id="status" class="status">
+        Loading attendance...
+    </div>
+
+    <table id="attendanceTable">
+
+        <thead>
+
+            <tr>
+                <th>Student Name</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Status</th>
+            </tr>
+
+        </thead>
+
+        <tbody id="attendanceBody">
+        </tbody>
+
+    </table>
+
+    <button onclick="goBack()">
+        Back
+    </button>
+
+</div>
+<script>
+const API_URL = "http://127.0.0.1:5000";
+
+async function loadAttendance() {
+
+    try {
+
+        const response = await fetch(
+            API_URL + "/attendance"
+        );
+
+        if (!response.ok) {
+            throw new Error(
+                "Server returned HTTP " + response.status
+            );
+        }
+
+        const data = await response.json();
+
+        const tbody = document.getElementById("attendanceBody");
+
+        tbody.innerHTML = "";
+
+        data.records.forEach(record => {
+
+            const row = document.createElement("tr");
+
+            row.innerHTML = `
+                <td>${record["Student Name"] || ""}</td>
+                <td>${record["Date"] || ""}</td>
+                <td>${record["Time"] || "--"}</td>
+                <td>${record["Status"] || "Absent"}</td>
+            `;
+
+            tbody.appendChild(row);
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        document.getElementById("status").innerText =
+            "Failed to load attendance: " + error.message;
+    }
+}
+
+loadAttendance();
+</script>
+
