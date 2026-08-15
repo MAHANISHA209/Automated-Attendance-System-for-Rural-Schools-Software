@@ -1,3 +1,6 @@
+# Attendance Face Recognition Page
+
+```html
 <!DOCTYPE html>
 <html>
 <head>
@@ -39,6 +42,11 @@
             background: #1d4ed8;
         }
 
+        button:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+
         #status {
             margin-top: 20px;
             font-weight: bold;
@@ -49,6 +57,22 @@
             margin-top: 20px;
             padding: 15px;
             font-size: 18px;
+            border-radius: 8px;
+        }
+
+        .success {
+            color: green;
+            background: #e8f8ec;
+        }
+
+        .failed {
+            color: red;
+            background: #ffecec;
+        }
+
+        .info {
+            color: #1d4ed8;
+            background: #eef4ff;
         }
     </style>
 </head>
@@ -63,7 +87,7 @@
         Click the button below to start face recognition.
     </p>
 
-    <button onclick="startRecognition()">
+    <button id="recognizeButton" onclick="startRecognition()">
         Start Face Recognition
     </button>
 
@@ -79,7 +103,8 @@
 
 <script>
 
-const API_URL = "https://automated-attendance-system-for-rural-0z5j.onrender.com";
+const API_URL =
+    "https://automated-attendance-system-for-rural-0z5j.onrender.com";
 
 
 // ------------------------------------
@@ -88,10 +113,27 @@ const API_URL = "https://automated-attendance-system-for-rural-0z5j.onrender.com
 
 async function startRecognition() {
 
-    document.getElementById("status").innerText =
+    const status =
+        document.getElementById("status");
+
+    const result =
+        document.getElementById("result");
+
+    const button =
+        document.getElementById("recognizeButton");
+
+
+    // Reset screen
+
+    status.innerText =
         "Starting face recognition...";
 
-    document.getElementById("result").innerText = "";
+    result.innerText = "";
+
+    result.className = "info";
+
+    button.disabled = true;
+
 
     try {
 
@@ -103,44 +145,107 @@ async function startRecognition() {
                 }
             );
 
+
+        // ------------------------------------
+        // CHECK HTTP RESPONSE
+        // ------------------------------------
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Server returned HTTP " +
+                response.status
+            );
+
+        }
+
+
         const data =
             await response.json();
 
-        if (data.status === "success") {
 
-            document.getElementById("status").innerText =
-                "Face recognition completed.";
+        console.log(
+            "Recognition response:",
+            data
+        );
 
-            document.getElementById("result").innerText =
-                data.message;
 
-        } else {
+        // ------------------------------------
+        // CHECK ACTUAL RECOGNITION RESULT
+        // ------------------------------------
 
-            document.getElementById("status").innerText =
-                "Recognition failed.";
+        if (
+            data.status === "success" &&
+            data.recognized === true
+        ) {
 
-            document.getElementById("result").innerText =
-                data.message;
+            status.innerText =
+                "Face recognized successfully.";
+
+            result.innerText =
+                data.message ||
+                "Attendance marked as Present.";
+
+            result.className =
+                "success";
+
         }
 
-    } catch (error) {
 
-        document.getElementById("status").innerText =
-            "Connection failed.";
+        else {
 
-        document.getElementById("result").innerText =
-            error.message;
+            status.innerText =
+                "Face not recognized.";
+
+            result.innerText =
+                data.message ||
+                "No registered face was recognized. Attendance was not marked.";
+
+            result.className =
+                "failed";
+
+        }
+
     }
+
+
+    catch (error) {
+
+        console.error(
+            "Recognition error:",
+            error
+        );
+
+
+        status.innerText =
+            "Recognition failed.";
+
+        result.innerText =
+            error.message;
+
+        result.className =
+            "failed";
+
+    }
+
+
+    finally {
+
+        button.disabled = false;
+
+    }
+
 }
 
 
 // ------------------------------------
-// REPORT
+// VIEW REPORT
 // ------------------------------------
 
 function viewReport() {
 
-    window.location.href = "report.html";
+    window.location.href =
+        "report.html";
 
 }
 
@@ -148,3 +253,4 @@ function viewReport() {
 
 </body>
 </html>
+```
