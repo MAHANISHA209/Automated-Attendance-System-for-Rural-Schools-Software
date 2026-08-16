@@ -230,260 +230,93 @@ def train():
 # VIEW ATTENDANCE
 # PRESENT / ABSENT
 # ==========================================
-@app.route("/recognize", methods=["POST"])
-def recognize():
+@app.route("/attendance", methods=["GET"])
+def attendance():
 
     try:
-        import cv2
-        import pickle
+        today = datetime.now().strftime("%Y-%m-%d")
 
-        # -----------------------------
-        # Check image received
-        # -----------------------------
+        students = []
 
-        if "image" not in request.files:
-            return jsonify({
-                "status": "error",
-                "recognized": False,
-                "message": "No image received."
-            }), 400
+        if os.path.exists(DATASET_DIR):
 
-        image_file = request.files["image"]
+            for name in os.listdir(DATASET_DIR):
 
-        if not image_file.filename:
-            return jsonify({
-                "status": "error",
-                "recognized": False,
-                "message": "Invalid image."
-            }), 400
-
-        # -----------------------------
-        # Load image
-        # -----------------------------
-
-        image_bytes = image_file.read()
-
-        import numpy as np
-
-        image_array = np.frombuffer(
-            image_bytes,
-            np.uint8
-        )
-
-        frame = cv2.imdecode(
-            image_array,
-            cv2.IMREAD_COLOR
-        )
-
-        if frame is None:
-            return jsonify({
-                "status": "error",
-                "recognized": False,
-                "message": "Could not read image."
-            }), 400
-
-        # -----------------------------
-        # Load model
-        # -----------------------------
-
-        trainer_file = os.path.join(
-            MODEL_DIR,
-            "trainer.yml"
-        )
-
-        labels_file = os.path.join(
-            MODEL_DIR,
-            "labels.pkl"
-        )
-
-        if not os.path.exists(trainer_file):
-            return jsonify({
-                "status": "error",
-                "recognized": False,
-                "message": "trainer.yml not found."
-            }), 400
-
-        if not os.path.exists(labels_file):
-            return jsonify({
-                "status": "error",
-                "recognized": False,
-                "message": "labels.pkl not found."
-            }), 400
-
-        recognizer = cv2.face.LBPHFaceRecognizer_create()
-
-        recognizer.read(trainer_file)
-
-        with open(labels_file, "rb") as file:
-            label_map = pickle.load(file)
-
-        # -----------------------------
-        # Face detector
-        # -----------------------------
-
-        face_detector = cv2.CascadeClassifier(
-            cv2.data.haarcascades +
-            "haarcascade_frontalface_default.xml"
-        )
-
-        gray = cv2.cvtColor(
-            frame,
-            cv2.COLOR_BGR2GRAY
-        )
-
-        faces = face_detector.detectMultiScale(
-            gray,
-            scaleFactor=1.1,
-            minNeighbors=5,
-            minSize=(100, 100)
-        )
-
-        # -----------------------------
-        # No face
-        # -----------------------------
-
-        if len(faces) == 0:
-
-            return jsonify({
-                "status": "success",
-                "recognized": False,
-                "message": "No face detected. Attendance not marked."
-            })
-
-        # -----------------------------
-        # Recognize face
-        # -----------------------------
-
-        for (x, y, w, h) in faces:
-
-            face = gray[
-                y:y+h,
-                x:x+w
-            ]
-
-            face = cv2.resize(
-                face,
-                (200, 200)
-            )
-
-            student_id, confidence = recognizer.predict(
-                face
-            )
-
-            print(
-                "Predicted ID:",
-                student_id,
-                "Confidence:",
-                confidence
-            )
-
-            # Lower confidence = better match
-
-            if confidence < 70:
-
-                student_name = label_map.get(
-                    student_id
+                student_path = os.path.join(
+                    DATASET_DIR,
+                    name
                 )
 
-                if not student_name:
-                    continue
+                if os.path.isdir(student_path):
+                    students.append(name)
 
-                # -----------------------------
-                # Mark attendance
-                # -----------------------------
+        present_students = {}
 
-                today = datetime.now().strftime(
-                    "%Y-%m-%d"
-                )
+        if os.path.exists(ATTENDANCE_FILE):
 
-                current_time = datetime.now().strftime(
-                    "%H:%M:%S"
-                )
+            with open(
+                ATTENDANCE_FILE,
+                "r",
+                newline="",
+                encoding="utf-8-sig"
+            ) as file:
 
-                already_marked = False
+                reader = csv.DictReader(file)
 
-                if os.path.exists(ATTENDANCE_FILE):
+                for row in reader:
 
-                    with open(
-                        ATTENDANCE_FILE,
-                        "r",
-                        newline="",
-                        encoding="utf-8-sig"
-                    ) as file:
+                    student_name = (
+                        row.get("Student Name")
+                        or row.get("student_name")
+                        or ""
+                    ).strip()
 
-                        reader = csv.DictReader(file)
+                    date = (
+                        row.get("Date")
+                        or row.get("date")
+                        or ""
+                    ).strip()
 
-                        for row in reader:
+                    time = (
+                        row.get("Time")
+                        or row.get("time")
+                        or ""
+                    ).strip()
 
-                            row_name = (
-                                row.get("Student Name")
-                                or ""
-                            ).strip()
+                    if student_name and date == today:
 
-                            row_date = (
-                                row.get("Date")
-                                or ""
-                            ).strip()
+                        present_students[student_name] = time
 
-                            if (
-                                row_name == student_name
-                                and row_date == today
-                            ):
+        records = []
 
-                                already_marked = True
-                                break
+        for student in sorted(students):
 
-                if not already_marked:
+            if student in present_students:
 
-                    with open(
-                        ATTENDANCE_FILE,
-                        "a",
-                        newline="",
-                        encoding="utf-8"
-                    ) as file:
-
-                        writer = csv.writer(file)
-
-                        writer.writerow([
-                            student_name,
-                            today,
-                            current_time,
-                            "Present"
-                        ])
-
-                    message = (
-                        student_name +
-                        " recognized. Attendance marked Present."
-                    )
-
-                else:
-
-                    message = (
-                        student_name +
-                        " already marked Present today."
-                    )
-
-                return jsonify({
-                    "status": "success",
-                    "recognized": True,
-                    "student_name": student_name,
-                    "message": message
+                records.append({
+                    "Student Name": student,
+                    "Date": today,
+                    "Time": present_students[student],
+                    "Status": "Present"
                 })
 
-        # -----------------------------
-        # Face detected but unknown
-        # -----------------------------
+            else:
+
+                records.append({
+                    "Student Name": student,
+                    "Date": today,
+                    "Time": "--",
+                    "Status": "Absent"
+                })
 
         return jsonify({
             "status": "success",
-            "recognized": False,
-            "message": "Face detected but student was not recognized. Attendance not marked."
+            "records": records
         })
 
     except Exception as e:
 
         return jsonify({
             "status": "error",
-            "recognized": False,
             "message": str(e)
         }), 500
