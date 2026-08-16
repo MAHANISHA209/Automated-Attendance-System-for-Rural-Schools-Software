@@ -354,174 +354,260 @@ def recognize():
 # VIEW ATTENDANCE
 # PRESENT / ABSENT
 # ==========================================
-
-@app.route("/attendance", methods=["GET"])
-def attendance():
+@app.route("/recognize", methods=["POST"])
+def recognize():
 
     try:
+        import cv2
+        import pickle
 
-        today = datetime.now().strftime(
-            "%Y-%m-%d"
+        # -----------------------------
+        # Check image received
+        # -----------------------------
+
+        if "image" not in request.files:
+            return jsonify({
+                "status": "error",
+                "recognized": False,
+                "message": "No image received."
+            }), 400
+
+        image_file = request.files["image"]
+
+        if not image_file.filename:
+            return jsonify({
+                "status": "error",
+                "recognized": False,
+                "message": "Invalid image."
+            }), 400
+
+        # -----------------------------
+        # Load image
+        # -----------------------------
+
+        image_bytes = image_file.read()
+
+        import numpy as np
+
+        image_array = np.frombuffer(
+            image_bytes,
+            np.uint8
         )
 
+        frame = cv2.imdecode(
+            image_array,
+            cv2.IMREAD_COLOR
+        )
 
-        # --------------------------------------
-        # GET REGISTERED STUDENTS
-        # --------------------------------------
+        if frame is None:
+            return jsonify({
+                "status": "error",
+                "recognized": False,
+                "message": "Could not read image."
+            }), 400
 
-        students = []
+        # -----------------------------
+        # Load model
+        # -----------------------------
 
+        trainer_file = os.path.join(
+            MODEL_DIR,
+            "trainer.yml"
+        )
 
-        if os.path.exists(DATASET_DIR):
+        labels_file = os.path.join(
+            MODEL_DIR,
+            "labels.pkl"
+        )
 
-            for name in os.listdir(DATASET_DIR):
+        if not os.path.exists(trainer_file):
+            return jsonify({
+                "status": "error",
+                "recognized": False,
+                "message": "trainer.yml not found."
+            }), 400
 
-                student_path = os.path.join(
-                    DATASET_DIR,
-                    name
+        if not os.path.exists(labels_file):
+            return jsonify({
+                "status": "error",
+                "recognized": False,
+                "message": "labels.pkl not found."
+            }), 400
+
+        recognizer = cv2.face.LBPHFaceRecognizer_create()
+
+        recognizer.read(trainer_file)
+
+        with open(labels_file, "rb") as file:
+            label_map = pickle.load(file)
+
+        # -----------------------------
+        # Face detector
+        # -----------------------------
+
+        face_detector = cv2.CascadeClassifier(
+            cv2.data.haarcascades +
+            "haarcascade_frontalface_default.xml"
+        )
+
+        gray = cv2.cvtColor(
+            frame,
+            cv2.COLOR_BGR2GRAY
+        )
+
+        faces = face_detector.detectMultiScale(
+            gray,
+            scaleFactor=1.1,
+            minNeighbors=5,
+            minSize=(100, 100)
+        )
+
+        # -----------------------------
+        # No face
+        # -----------------------------
+
+        if len(faces) == 0:
+
+            return jsonify({
+                "status": "success",
+                "recognized": False,
+                "message": "No face detected. Attendance not marked."
+            })
+
+        # -----------------------------
+        # Recognize face
+        # -----------------------------
+
+        for (x, y, w, h) in faces:
+
+            face = gray[
+                y:y+h,
+                x:x+w
+            ]
+
+            face = cv2.resize(
+                face,
+                (200, 200)
+            )
+
+            student_id, confidence = recognizer.predict(
+                face
+            )
+
+            print(
+                "Predicted ID:",
+                student_id,
+                "Confidence:",
+                confidence
+            )
+
+            # Lower confidence = better match
+
+            if confidence < 70:
+
+                student_name = label_map.get(
+                    student_id
                 )
 
+                if not student_name:
+                    continue
 
-                if os.path.isdir(student_path):
+                # -----------------------------
+                # Mark attendance
+                # -----------------------------
 
-                    students.append(name)
+                today = datetime.now().strftime(
+                    "%Y-%m-%d"
+                )
 
+                current_time = datetime.now().strftime(
+                    "%H:%M:%S"
+                )
 
-        # --------------------------------------
-        # READ TODAY'S ATTENDANCE
-        # --------------------------------------
+                already_marked = False
 
-        present_students = {}
+                if os.path.exists(ATTENDANCE_FILE):
 
+                    with open(
+                        ATTENDANCE_FILE,
+                        "r",
+                        newline="",
+                        encoding="utf-8-sig"
+                    ) as file:
 
-        if os.path.exists(ATTENDANCE_FILE):
+                        reader = csv.DictReader(file)
 
-            with open(
-                ATTENDANCE_FILE,
-                "r",
-                newline="",
-                encoding="utf-8-sig"
-            ) as file:
+                        for row in reader:
 
-                reader = csv.DictReader(file)
+                            row_name = (
+                                row.get("Student Name")
+                                or ""
+                            ).strip()
 
+                            row_date = (
+                                row.get("Date")
+                                or ""
+                            ).strip()
 
-                for row in reader:
+                            if (
+                                row_name == student_name
+                                and row_date == today
+                            ):
 
-                    student_name = (
-                        row.get("Student Name")
-                        or row.get("student_name")
-                        or row.get("StudentName")
-                        or ""
-                    ).strip()
+                                already_marked = True
+                                break
 
+                if not already_marked:
 
-                    date = (
-                        row.get("Date")
-                        or row.get("date")
-                        or ""
-                    ).strip()
+                    with open(
+                        ATTENDANCE_FILE,
+                        "a",
+                        newline="",
+                        encoding="utf-8"
+                    ) as file:
 
+                        writer = csv.writer(file)
 
-                    time = (
-                        row.get("Time")
-                        or row.get("time")
-                        or ""
-                    ).strip()
+                        writer.writerow([
+                            student_name,
+                            today,
+                            current_time,
+                            "Present"
+                        ])
 
+                    message = (
+                        student_name +
+                        " recognized. Attendance marked Present."
+                    )
 
-                    if (
-                        student_name
-                        and date == today
-                    ):
+                else:
 
-                        present_students[
-                            student_name
-                        ] = time
+                    message = (
+                        student_name +
+                        " already marked Present today."
+                    )
 
-
-        # --------------------------------------
-        # CREATE PRESENT / ABSENT REPORT
-        # --------------------------------------
-
-        records = []
-
-
-        for student in sorted(students):
-
-            if student in present_students:
-
-                records.append({
-
-                    "Student Name":
-                        student,
-
-                    "Date":
-                        today,
-
-                    "Time":
-                        present_students[student],
-
-                    "Status":
-                        "Present"
-
+                return jsonify({
+                    "status": "success",
+                    "recognized": True,
+                    "student_name": student_name,
+                    "message": message
                 })
 
-            else:
-
-                records.append({
-
-                    "Student Name":
-                        student,
-
-                    "Date":
-                        today,
-
-                    "Time":
-                        "--",
-
-                    "Status":
-                        "Absent"
-
-                })
-
+        # -----------------------------
+        # Face detected but unknown
+        # -----------------------------
 
         return jsonify({
-
-            "status":
-                "success",
-
-            "records":
-                records
-
+            "status": "success",
+            "recognized": False,
+            "message": "Face detected but student was not recognized. Attendance not marked."
         })
-
 
     except Exception as e:
 
         return jsonify({
-
-            "status":
-                "error",
-
-            "message":
-                str(e)
-
+            "status": "error",
+            "recognized": False,
+            "message": str(e)
         }), 500
-
-
-# ==========================================
-# START SERVER
-# ==========================================
-
-if __name__ == "__main__":
-
-    app.run(
-
-        host="0.0.0.0",
-
-        port=5000,
-
-        debug=True
-
-    )

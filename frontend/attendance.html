@@ -1,4 +1,6 @@
-# Attendance Face Recognition Page
+
+
+```# Updated attendance.html
 
 ```html
 <!DOCTYPE html>
@@ -15,7 +17,7 @@
         }
 
         .container {
-            width: 650px;
+            width: 700px;
             margin: auto;
             background: white;
             padding: 30px;
@@ -25,6 +27,19 @@
 
         h1 {
             color: #1d4ed8;
+        }
+
+        video {
+            width: 500px;
+            max-width: 100%;
+            border-radius: 12px;
+            border: 3px solid #2563eb;
+            margin-top: 20px;
+            background: black;
+        }
+
+        canvas {
+            display: none;
         }
 
         button {
@@ -84,11 +99,23 @@
     <h1>Face Recognition Attendance</h1>
 
     <p>
-        Click the button below to start face recognition.
+        Allow camera access and place your face in front of the camera.
     </p>
 
-    <button id="recognizeButton" onclick="startRecognition()">
-        Start Face Recognition
+    <video id="camera" autoplay playsinline></video>
+
+    <canvas id="canvas"></canvas>
+
+    <br>
+
+    <button id="startCameraButton" onclick="startCamera()">
+        Start Camera
+    </button>
+
+    <button id="recognizeButton"
+            onclick="startRecognition()"
+            disabled>
+        Recognize Face
     </button>
 
     <button onclick="viewReport()">
@@ -106,12 +133,88 @@
 const API_URL =
     "https://automated-attendance-system-for-rural-0z5j.onrender.com";
 
+let cameraStream = null;
 
-// ------------------------------------
-// START FACE RECOGNITION
-// ------------------------------------
+
+// ==========================================
+// START CAMERA
+// ==========================================
+
+async function startCamera() {
+
+    const status =
+        document.getElementById("status");
+
+    const result =
+        document.getElementById("result");
+
+    const video =
+        document.getElementById("camera");
+
+    const recognizeButton =
+        document.getElementById("recognizeButton");
+
+    try {
+
+        status.innerText =
+            "Requesting camera permission...";
+
+        result.innerText = "";
+
+        result.className = "info";
+
+
+        cameraStream =
+            await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: false
+            });
+
+
+        video.srcObject =
+            cameraStream;
+
+
+        recognizeButton.disabled =
+            false;
+
+
+        status.innerText =
+            "Camera started. Position your face in the camera.";
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Camera error:",
+            error
+        );
+
+        status.innerText =
+            "Camera could not be started.";
+
+        result.innerText =
+            "Please allow camera permission and try again.";
+
+        result.className =
+            "failed";
+
+    }
+}
+
+
+// ==========================================
+// CAPTURE IMAGE AND RECOGNIZE
+// ==========================================
 
 async function startRecognition() {
+
+    const video =
+        document.getElementById("camera");
+
+    const canvas =
+        document.getElementById("canvas");
 
     const status =
         document.getElementById("status");
@@ -123,32 +226,111 @@ async function startRecognition() {
         document.getElementById("recognizeButton");
 
 
-    // Reset screen
+    if (!cameraStream) {
+
+        status.innerText =
+            "Please start the camera first.";
+
+        return;
+    }
+
+
+    button.disabled =
+        true;
+
 
     status.innerText =
-        "Starting face recognition...";
+        "Capturing face...";
 
     result.innerText = "";
 
-    result.className = "info";
-
-    button.disabled = true;
+    result.className =
+        "info";
 
 
     try {
+
+        // ----------------------------------
+        // Capture current camera frame
+        // ----------------------------------
+
+        canvas.width =
+            video.videoWidth;
+
+        canvas.height =
+            video.videoHeight;
+
+
+        const context =
+            canvas.getContext("2d");
+
+
+        context.drawImage(
+            video,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+
+        // ----------------------------------
+        // Convert frame to image
+        // ----------------------------------
+
+        const imageBlob =
+            await new Promise(resolve => {
+
+                canvas.toBlob(
+                    resolve,
+                    "image/jpeg",
+                    0.9
+                );
+
+            });
+
+
+        if (!imageBlob) {
+
+            throw new Error(
+                "Could not capture camera image."
+            );
+
+        }
+
+
+        // ----------------------------------
+        // Create multipart form data
+        // ----------------------------------
+
+        const formData =
+            new FormData();
+
+
+        formData.append(
+            "image",
+            imageBlob,
+            "face.jpg"
+        );
+
+
+        status.innerText =
+            "Checking face...";
+
+
+        // ----------------------------------
+        // Send image to Flask
+        // ----------------------------------
 
         const response =
             await fetch(
                 API_URL + "/recognize",
                 {
-                    method: "POST"
+                    method: "POST",
+                    body: formData
                 }
             );
 
-
-        // ------------------------------------
-        // CHECK HTTP RESPONSE
-        // ------------------------------------
 
         if (!response.ok) {
 
@@ -170,9 +352,9 @@ async function startRecognition() {
         );
 
 
-        // ------------------------------------
-        // CHECK ACTUAL RECOGNITION RESULT
-        // ------------------------------------
+        // ----------------------------------
+        // ACTUAL RECOGNITION RESULT
+        // ----------------------------------
 
         if (
             data.status === "success" &&
@@ -183,14 +365,12 @@ async function startRecognition() {
                 "Face recognized successfully.";
 
             result.innerText =
-                data.message ||
-                "Attendance marked as Present.";
+                data.message;
 
             result.className =
                 "success";
 
         }
-
 
         else {
 
@@ -199,7 +379,7 @@ async function startRecognition() {
 
             result.innerText =
                 data.message ||
-                "No registered face was recognized. Attendance was not marked.";
+                "No registered face recognized. Attendance was not marked.";
 
             result.className =
                 "failed";
@@ -207,7 +387,6 @@ async function startRecognition() {
         }
 
     }
-
 
     catch (error) {
 
@@ -228,19 +407,18 @@ async function startRecognition() {
 
     }
 
-
     finally {
 
-        button.disabled = false;
+        button.disabled =
+            false;
 
     }
-
 }
 
 
-// ------------------------------------
+// ==========================================
 // VIEW REPORT
-// ------------------------------------
+// ==========================================
 
 function viewReport() {
 
