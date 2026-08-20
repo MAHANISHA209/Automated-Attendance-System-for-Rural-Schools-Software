@@ -230,87 +230,98 @@ def train():
 # VIEW ATTENDANCE
 # PRESENT / ABSENT
 # ==========================================
-@app.route("/recognize", methods=["POST"])
-def recognize():
+# ==========================================
+# VIEW ATTENDANCE
+# PRESENT / ABSENT
+# ==========================================
+
+@app.route("/attendance", methods=["GET"])
+def attendance():
 
     try:
 
-        if not os.path.exists(RECOGNIZE_FILE):
+        today = datetime.now().strftime("%Y-%m-%d")
 
-            return jsonify({
-                "status": "error",
-                "recognized": False,
-                "message": "recognize.py not found."
-            }), 404
+        students = []
 
-        trainer_file = os.path.join(
-            MODEL_DIR,
-            "trainer.yml"
-        )
+        if os.path.exists(DATASET_DIR):
 
-        labels_file = os.path.join(
-            MODEL_DIR,
-            "labels.pkl"
-        )
+            for name in os.listdir(DATASET_DIR):
 
-        if not os.path.exists(trainer_file):
+                student_path = os.path.join(
+                    DATASET_DIR,
+                    name
+                )
 
-            return jsonify({
-                "status": "error",
-                "recognized": False,
-                "message": "trainer.yml not found. Train the model first."
-            }), 400
+                if os.path.isdir(student_path):
+                    students.append(name)
 
-        if not os.path.exists(labels_file):
+        present_students = {}
 
-            return jsonify({
-                "status": "error",
-                "recognized": False,
-                "message": "labels.pkl not found. Train the model first."
-            }), 400
+        if os.path.exists(ATTENDANCE_FILE):
 
-        result = subprocess.run(
-            [
-                sys.executable,
-                RECOGNIZE_FILE
-            ],
-            cwd=BASE_DIR,
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
+            with open(
+                ATTENDANCE_FILE,
+                "r",
+                newline="",
+                encoding="utf-8-sig"
+            ) as file:
 
-        if result.returncode != 0:
+                reader = csv.DictReader(file)
 
-            return jsonify({
-                "status": "error",
-                "recognized": False,
-                "message": "Face recognition failed.",
-                "error": result.stderr,
-                "output": result.stdout
-            }), 500
+                for row in reader:
 
-        output = result.stdout.strip()
+                    student_name = (
+                        row.get("Student Name")
+                        or row.get("student_name")
+                        or ""
+                    ).strip()
+
+                    date = (
+                        row.get("Date")
+                        or row.get("date")
+                        or ""
+                    ).strip()
+
+                    time = (
+                        row.get("Time")
+                        or row.get("time")
+                        or ""
+                    ).strip()
+
+                    if student_name and date == today:
+                        present_students[student_name] = time
+
+        records = []
+
+        for student in sorted(students):
+
+            if student in present_students:
+
+                records.append({
+                    "Student Name": student,
+                    "Date": today,
+                    "Time": present_students[student],
+                    "Status": "Present"
+                })
+
+            else:
+
+                records.append({
+                    "Student Name": student,
+                    "Date": today,
+                    "Time": "--",
+                    "Status": "Absent"
+                })
 
         return jsonify({
             "status": "success",
-            "recognized": True,
-            "message": "Face recognition completed successfully.",
-            "output": output
+            "records": records
         })
-
-    except subprocess.TimeoutExpired:
-
-        return jsonify({
-            "status": "error",
-            "recognized": False,
-            "message": "Face recognition timed out."
-        }), 500
 
     except Exception as e:
 
         return jsonify({
             "status": "error",
-            "recognized": False,
             "message": str(e)
         }), 500
