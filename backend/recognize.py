@@ -1,12 +1,11 @@
 import cv2
 import os
 import pickle
-import csv
-from datetime import datetime
+import sys
 
-# -----------------------------------------
-# Paths
-# -----------------------------------------
+# ==========================================
+# PATHS
+# ==========================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -22,261 +21,209 @@ LABELS_PATH = os.path.join(
     "labels.pkl"
 )
 
-ATTENDANCE_FILE = os.path.join(
-    BASE_DIR,
-    "Attendance.csv"
-)
 
-# -----------------------------------------
-# Check model files
-# -----------------------------------------
+# ==========================================
+# CHECK INPUT IMAGE
+# ==========================================
+
+if len(sys.argv) < 2:
+
+    print("ERROR: Input image not provided.")
+    sys.exit(1)
+
+IMAGE_PATH = sys.argv[1]
+
+
+if not os.path.exists(IMAGE_PATH):
+
+    print("ERROR: Input image not found.")
+    sys.exit(1)
+
+
+# ==========================================
+# CHECK MODEL
+# ==========================================
 
 if not os.path.exists(TRAINER_PATH):
+
     print("ERROR: trainer.yml not found.")
-    exit()
+    sys.exit(1)
+
 
 if not os.path.exists(LABELS_PATH):
+
     print("ERROR: labels.pkl not found.")
-    exit()
+    sys.exit(1)
 
-# -----------------------------------------
-# Create Attendance.csv header
-# -----------------------------------------
 
-if not os.path.exists(ATTENDANCE_FILE):
+# ==========================================
+# LOAD IMAGE
+# ==========================================
 
-    with open(
-        ATTENDANCE_FILE,
-        "w",
-        newline="",
-        encoding="utf-8"
-    ) as file:
+image = cv2.imread(IMAGE_PATH)
 
-        writer = csv.writer(file)
+if image is None:
 
-        writer.writerow([
-            "Student Name",
-            "Date",
-            "Time",
-            "Status"
-        ])
+    print("ERROR: Could not read image.")
+    sys.exit(1)
 
-# -----------------------------------------
-# Load face detector
-# -----------------------------------------
+
+# ==========================================
+# LOAD FACE DETECTOR
+# ==========================================
 
 face_detector = cv2.CascadeClassifier(
     cv2.data.haarcascades +
     "haarcascade_frontalface_default.xml"
 )
 
-# -----------------------------------------
-# Load LBPH model
-# -----------------------------------------
 
-recognizer = cv2.face.LBPHFaceRecognizer_create()
+# ==========================================
+# LOAD LBPH MODEL
+# ==========================================
 
-recognizer.read(TRAINER_PATH)
+try:
 
-# -----------------------------------------
-# Load student labels
-# -----------------------------------------
+    recognizer = cv2.face.LBPHFaceRecognizer_create()
 
-with open(
-    LABELS_PATH,
-    "rb"
-) as file:
+    recognizer.read(TRAINER_PATH)
 
-    label_map = pickle.load(file)
-
-print("Students loaded:")
-
-for student_id, student_name in label_map.items():
+except Exception as e:
 
     print(
-        student_id,
-        "->",
-        student_name
+        "ERROR: Could not load LBPH model: "
+        + str(e)
     )
 
-# -----------------------------------------
-# Attendance function
-# -----------------------------------------
+    sys.exit(1)
 
-def mark_attendance(student_name):
 
-    today = datetime.now().strftime("%Y-%m-%d")
+# ==========================================
+# LOAD LABELS
+# ==========================================
 
-    current_time = datetime.now().strftime("%H:%M:%S")
-
-    # Check existing attendance
-
-    if os.path.exists(ATTENDANCE_FILE):
-
-        with open(
-            ATTENDANCE_FILE,
-            "r",
-            newline="",
-            encoding="utf-8"
-        ) as file:
-
-            reader = csv.DictReader(file)
-
-            for row in reader:
-
-                if (
-                    row["Student Name"] == student_name
-                    and row["Date"] == today
-                ):
-
-                    print(
-                        f"{student_name} already marked today."
-                    )
-
-                    return
-
-    # Save attendance
+try:
 
     with open(
-        ATTENDANCE_FILE,
-        "a",
-        newline="",
-        encoding="utf-8"
+        LABELS_PATH,
+        "rb"
     ) as file:
 
-        writer = csv.writer(file)
+        label_map = pickle.load(file)
 
-        writer.writerow([
-            student_name,
-            today,
-            current_time,
-            "Present"
-        ])
+except Exception as e:
 
     print(
-        f"Attendance marked: {student_name}"
+        "ERROR: Could not load labels.pkl: "
+        + str(e)
     )
 
-# -----------------------------------------
-# Start camera
-# -----------------------------------------
+    sys.exit(1)
 
-camera = cv2.VideoCapture(0)
 
-if not camera.isOpened():
+# ==========================================
+# CONVERT IMAGE TO GRAYSCALE
+# ==========================================
 
-    print("ERROR: Camera could not be opened.")
+gray = cv2.cvtColor(
+    image,
+    cv2.COLOR_BGR2GRAY
+)
 
-    exit()
 
-print()
-print("================================")
-print("FACE RECOGNITION + ATTENDANCE")
-print("================================")
-print("Press Q to stop.")
+# ==========================================
+# DETECT FACE
+# ==========================================
 
-# -----------------------------------------
-# Recognition loop
-# -----------------------------------------
+faces = face_detector.detectMultiScale(
+    gray,
+    scaleFactor=1.1,
+    minNeighbors=5,
+    minSize=(100, 100)
+)
 
-while True:
 
-    success, frame = camera.read()
+if len(faces) == 0:
 
-    if not success:
+    print("UNKNOWN: No face detected.")
+    sys.exit(0)
 
-        print("ERROR: Could not read camera.")
 
-        break
+# ==========================================
+# RECOGNIZE FACE
+# ==========================================
 
-    gray = cv2.cvtColor(
-        frame,
-        cv2.COLOR_BGR2GRAY
+best_name = None
+best_confidence = 999
+
+
+for (x, y, w, h) in faces:
+
+    face = gray[
+        y:y + h,
+        x:x + w
+    ]
+
+    face = cv2.resize(
+        face,
+        (200, 200)
     )
 
-    faces = face_detector.detectMultiScale(
-        gray,
-        scaleFactor=1.1,
-        minNeighbors=5,
-        minSize=(100, 100)
-    )
+    try:
 
-    for (x, y, w, h) in faces:
-
-        face = gray[
-            y:y+h,
-            x:x+w
-        ]
-
-        face = cv2.resize(
-            face,
-            (200, 200)
+        student_id, confidence = (
+            recognizer.predict(face)
         )
 
-        student_id, confidence = recognizer.predict(face)
+    except Exception as e:
 
-        # Lower LBPH confidence = better match
-
-        if confidence < 70:
-
-            student_name = label_map.get(
-                student_id,
-                "Unknown"
-            )
-
-            # Mark attendance
-
-            mark_attendance(student_name)
-
-            display_text = (
-                student_name
-                + " - Present"
-            )
-
-        else:
-
-            display_text = "Unknown"
-
-        # Draw face rectangle
-
-        cv2.rectangle(
-            frame,
-            (x, y),
-            (x+w, y+h),
-            (0, 255, 0),
-            2
+        print(
+            "ERROR: Face prediction failed: "
+            + str(e)
         )
 
-        # Display name
+        sys.exit(1)
 
-        cv2.putText(
-            frame,
-            display_text,
-            (x, y - 10),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.8,
-            (0, 255, 0),
-            2
+
+    if confidence < best_confidence:
+
+        best_confidence = confidence
+
+        best_name = label_map.get(
+            student_id,
+            "Unknown"
         )
 
-    cv2.imshow(
-        "Face Recognition - Attendance",
-        frame
+
+# ==========================================
+# CHECK RECOGNITION
+# ==========================================
+
+# Lower LBPH confidence = better match
+THRESHOLD = 70
+
+
+if (
+    best_name is not None
+    and best_name != "Unknown"
+    and best_confidence < THRESHOLD
+):
+
+    print(
+        "RECOGNIZED:"
+        + str(best_name)
     )
 
-    # Press Q to stop
+    print(
+        "CONFIDENCE:"
+        + str(round(best_confidence, 2))
+    )
 
-    if cv2.waitKey(1) & 0xFF == ord("q"):
+    sys.exit(0)
 
-        break
 
-# -----------------------------------------
-# Close camera
-# -----------------------------------------
+print(
+    "UNKNOWN: Face not recognized."
+)
 
-camera.release()
-
-cv2.destroyAllWindows()
-
-print()
-print("Face recognition stopped.")
+sys.exit(0)

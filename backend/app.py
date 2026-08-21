@@ -220,6 +220,71 @@ def train():
             "message": str(e)
 
         }), 500
+    # ==========================================
+# MARK ATTENDANCE
+# ==========================================
+
+def mark_attendance(student_name):
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    current_time = datetime.now().strftime("%H:%M:%S")
+
+    # Create CSV if it does not exist
+    if not os.path.exists(ATTENDANCE_FILE):
+
+        with open(
+            ATTENDANCE_FILE,
+            "w",
+            newline="",
+            encoding="utf-8"
+        ) as file:
+
+            writer = csv.writer(file)
+
+            writer.writerow([
+                "Student Name",
+                "Date",
+                "Time",
+                "Status"
+            ])
+
+    # Check whether already marked today
+    with open(
+        ATTENDANCE_FILE,
+        "r",
+        newline="",
+        encoding="utf-8-sig"
+    ) as file:
+
+        reader = csv.DictReader(file)
+
+        for row in reader:
+
+            if (
+                row.get("Student Name") == student_name
+                and row.get("Date") == today
+            ):
+
+                return False
+
+    # Add attendance
+    with open(
+        ATTENDANCE_FILE,
+        "a",
+        newline="",
+        encoding="utf-8"
+    ) as file:
+
+        writer = csv.writer(file)
+
+        writer.writerow([
+            student_name,
+            today,
+            current_time,
+            "Present"
+        ])
+
+    return True
 
 
 # ==========================================
@@ -235,93 +300,245 @@ def train():
 # PRESENT / ABSENT
 # ==========================================
 
-@app.route("/attendance", methods=["GET"])
-def attendance():
+@app.route("/recognize", methods=["POST"])
+def recognize():
+
+    temp_image = os.path.join(
+        BASE_DIR,
+        "temp_face.jpg"
+    )
 
     try:
 
-        today = datetime.now().strftime("%Y-%m-%d")
+        # -------------------------------
+        # Receive browser camera image
+        # -------------------------------
 
-        students = []
+        image = request.files.get("image")
 
-        if os.path.exists(DATASET_DIR):
+        if image is None:
 
-            for name in os.listdir(DATASET_DIR):
+            return jsonify({
+                "status": "error",
+                "recognized": False,
+                "message":
+                    "No camera image received."
+            }), 400
 
-                student_path = os.path.join(
-                    DATASET_DIR,
-                    name
+
+        # -------------------------------
+        # Check model
+        # -------------------------------
+
+        trainer_file = os.path.join(
+            MODEL_DIR,
+            "trainer.yml"
+        )
+
+        labels_file = os.path.join(
+            MODEL_DIR,
+            "labels.pkl"
+        )
+
+
+        if not os.path.exists(trainer_file):
+
+            return jsonify({
+                "status": "error",
+                "recognized": False,
+                "message":
+                    "trainer.yml not found."
+            }), 400
+
+
+        if not os.path.exists(labels_file):
+
+            return jsonify({
+                "status": "error",
+                "recognized": False,
+                "message":
+                    "labels.pkl not found."
+            }), 400
+
+
+        # -------------------------------
+        # Save browser image
+        # -------------------------------
+
+        image.save(temp_image)
+
+
+        # -------------------------------
+        # Run recognition
+        # -------------------------------
+
+        result = subprocess.run(
+
+            [
+                sys.executable,
+                RECOGNIZE_FILE,
+                temp_image
+            ],
+
+            cwd=BASE_DIR,
+
+            capture_output=True,
+
+            text=True,
+
+            timeout=60
+        )
+
+
+        output = result.stdout.strip()
+
+
+        # -------------------------------
+        # Delete temporary image
+        # -------------------------------
+
+        if os.path.exists(temp_image):
+
+            os.remove(temp_image)
+
+
+        # -------------------------------
+        # Recognition script error
+        # -------------------------------
+
+        if result.returncode != 0:
+
+            return jsonify({
+
+                "status": "error",
+
+                "recognized": False,
+
+                "message":
+                    "Face recognition failed.",
+
+                "error":
+                    result.stderr,
+
+                "output":
+                    output
+
+            }), 500
+
+
+        # -------------------------------
+        # RECOGNIZED
+        # -------------------------------
+
+        if output.startswith("RECOGNIZED:"):
+
+            student_name = (
+                output
+                .replace(
+                    "RECOGNIZED:",
+                    "",
+                    1
                 )
+                .strip()
+            )
 
-                if os.path.isdir(student_path):
-                    students.append(name)
 
-        present_students = {}
+            # Mark attendance
 
-        if os.path.exists(ATTENDANCE_FILE):
+            newly_marked = mark_attendance(
+                student_name
+            )
 
-            with open(
-                ATTENDANCE_FILE,
-                "r",
-                newline="",
-                encoding="utf-8-sig"
-            ) as file:
 
-                reader = csv.DictReader(file)
+            if newly_marked:
 
-                for row in reader:
-
-                    student_name = (
-                        row.get("Student Name")
-                        or row.get("student_name")
-                        or ""
-                    ).strip()
-
-                    date = (
-                        row.get("Date")
-                        or row.get("date")
-                        or ""
-                    ).strip()
-
-                    time = (
-                        row.get("Time")
-                        or row.get("time")
-                        or ""
-                    ).strip()
-
-                    if student_name and date == today:
-                        present_students[student_name] = time
-
-        records = []
-
-        for student in sorted(students):
-
-            if student in present_students:
-
-                records.append({
-                    "Student Name": student,
-                    "Date": today,
-                    "Time": present_students[student],
-                    "Status": "Present"
-                })
+                message = (
+                    f"{student_name} recognized. "
+                    "Attendance marked as Present."
+                )
 
             else:
 
-                records.append({
-                    "Student Name": student,
-                    "Date": today,
-                    "Time": "--",
-                    "Status": "Absent"
-                })
+                message = (
+                    f"{student_name} recognized. "
+                    "Attendance was already marked today."
+                )
+
+
+            return jsonify({
+
+                "status": "success",
+
+                "recognized": True,
+
+                "student_name":
+                    student_name,
+
+                "attendance_marked":
+                    newly_marked,
+
+                "message":
+                    message,
+
+                "output":
+                    output
+
+            })
+
+
+        # -------------------------------
+        # UNKNOWN
+        # -------------------------------
 
         return jsonify({
+
             "status": "success",
-            "records": records
+
+            "recognized": False,
+
+            "message":
+                "Face not recognized. "
+                "Attendance was not marked.",
+
+            "output":
+                output
+
         })
+
+
+    except subprocess.TimeoutExpired:
+
+        if os.path.exists(temp_image):
+
+            os.remove(temp_image)
+
+
+        return jsonify({
+
+            "status": "error",
+
+            "recognized": False,
+
+            "message":
+                "Face recognition timed out."
+
+        }), 500
+
 
     except Exception as e:
 
+        if os.path.exists(temp_image):
+
+            os.remove(temp_image)
+
+
         return jsonify({
+
             "status": "error",
-            "message": str(e)
+
+            "recognized": False,
+
+            "message":
+                str(e)
+
         }), 500
