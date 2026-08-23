@@ -7,13 +7,17 @@ import csv
 from datetime import datetime
 
 
+# =========================================================
+# FLASK APP
+# =========================================================
+
 app = Flask(__name__)
 CORS(app)
 
 
-# ==========================================
+# =========================================================
 # DIRECTORIES
-# ==========================================
+# =========================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -28,14 +32,14 @@ ATTENDANCE_FILE = os.path.join(
     "Attendance.csv"
 )
 
-
+# Create directories if they don't exist
 os.makedirs(DATASET_DIR, exist_ok=True)
 os.makedirs(MODEL_DIR, exist_ok=True)
 
 
-# ==========================================
+# =========================================================
 # HOME
-# ==========================================
+# =========================================================
 
 @app.route("/", methods=["GET"])
 def home():
@@ -46,20 +50,23 @@ def home():
     })
 
 
-# ==========================================
+# =========================================================
 # REGISTER STUDENT
-# ==========================================
+# =========================================================
 
 @app.route("/register", methods=["POST"])
 def register():
 
     try:
 
+        # -------------------------------------------------
+        # GET STUDENT NAME
+        # -------------------------------------------------
+
         student_name = request.form.get(
             "student_name",
             ""
         ).strip()
-
 
         if not student_name:
 
@@ -68,23 +75,25 @@ def register():
                 "message": "Student name is required."
             }), 400
 
+        # -------------------------------------------------
+        # STUDENT DIRECTORY
+        # -------------------------------------------------
 
         student_dir = os.path.join(
             DATASET_DIR,
             student_name
         )
 
-
         os.makedirs(
             student_dir,
             exist_ok=True
         )
 
+        # -------------------------------------------------
+        # GET IMAGES
+        # -------------------------------------------------
 
-        images = request.files.getlist(
-            "images"
-        )
-
+        images = request.files.getlist("images")
 
         if not images:
 
@@ -93,29 +102,31 @@ def register():
                 "message": "No images received."
             }), 400
 
+        # -------------------------------------------------
+        # SAVE IMAGES
+        # -------------------------------------------------
 
         saved = 0
-
 
         for image in images:
 
             if not image.filename:
                 continue
 
-
             filename = f"{saved + 1}.jpg"
-
 
             filepath = os.path.join(
                 student_dir,
                 filename
             )
 
-
             image.save(filepath)
 
             saved += 1
 
+        # -------------------------------------------------
+        # RESPONSE
+        # -------------------------------------------------
 
         return jsonify({
 
@@ -132,26 +143,30 @@ def register():
 
         })
 
-
     except Exception as e:
 
         return jsonify({
 
             "status": "error",
 
-            "message": str(e)
+            "message":
+                str(e)
 
         }), 500
 
 
-# ==========================================
+# =========================================================
 # TRAIN FACE MODEL
-# ==========================================
+# =========================================================
 
 @app.route("/train", methods=["GET", "POST"])
 def train():
 
     try:
+
+        # -------------------------------------------------
+        # CHECK TRAIN FILE
+        # -------------------------------------------------
 
         if not os.path.exists(TRAIN_FILE):
 
@@ -164,6 +179,9 @@ def train():
 
             }), 404
 
+        # -------------------------------------------------
+        # RUN TRAIN.PY
+        # -------------------------------------------------
 
         result = subprocess.run(
 
@@ -179,6 +197,9 @@ def train():
             text=True
         )
 
+        # -------------------------------------------------
+        # TRAINING ERROR
+        # -------------------------------------------------
 
         if result.returncode != 0:
 
@@ -197,6 +218,9 @@ def train():
 
             }), 500
 
+        # -------------------------------------------------
+        # TRAINING SUCCESS
+        # -------------------------------------------------
 
         return jsonify({
 
@@ -210,26 +234,36 @@ def train():
 
         })
 
-
     except Exception as e:
 
         return jsonify({
 
             "status": "error",
 
-            "message": str(e)
+            "message":
+                str(e)
 
         }), 500
-    # ==========================================
+
+
+# =========================================================
 # MARK ATTENDANCE
-# ==========================================
+# =========================================================
 
 def mark_attendance(student_name):
 
-    today = datetime.now().strftime("%Y-%m-%d")
-    current_time = datetime.now().strftime("%H:%M:%S")
+    today = datetime.now().strftime(
+        "%Y-%m-%d"
+    )
 
-    # Create CSV if it does not exist
+    current_time = datetime.now().strftime(
+        "%H:%M:%S"
+    )
+
+    # -----------------------------------------------------
+    # CREATE CSV IF IT DOES NOT EXIST
+    # -----------------------------------------------------
+
     if not os.path.exists(ATTENDANCE_FILE):
 
         with open(
@@ -248,7 +282,10 @@ def mark_attendance(student_name):
                 "Status"
             ])
 
-    # Check whether already marked today
+    # -----------------------------------------------------
+    # CHECK DUPLICATE ATTENDANCE
+    # -----------------------------------------------------
+
     with open(
         ATTENDANCE_FILE,
         "r",
@@ -260,14 +297,36 @@ def mark_attendance(student_name):
 
         for row in reader:
 
+            existing_name = (
+                row.get(
+                    "Student Name",
+                    ""
+                )
+                .strip()
+            )
+
+            existing_date = (
+                row.get(
+                    "Date",
+                    ""
+                )
+                .strip()
+            )
+
             if (
-                row.get("Student Name") == student_name
-                and row.get("Date") == today
+                existing_name.lower()
+                == student_name.lower()
+                and
+                existing_date
+                == today
             ):
 
                 return False
 
-    # Add attendance
+    # -----------------------------------------------------
+    # SAVE ATTENDANCE
+    # -----------------------------------------------------
+
     with open(
         ATTENDANCE_FILE,
         "a",
@@ -278,27 +337,139 @@ def mark_attendance(student_name):
         writer = csv.writer(file)
 
         writer.writerow([
+
             student_name,
+
             today,
+
             current_time,
+
             "Present"
+
         ])
 
     return True
 
 
-# ==========================================
-# FACE RECOGNITION
-# ==========================================
+# =========================================================
+# VIEW ATTENDANCE
+# =========================================================
 
-# ==========================================
-# VIEW ATTENDANCE
-# PRESENT / ABSENT
-# ==========================================
-# ==========================================
-# VIEW ATTENDANCE
-# PRESENT / ABSENT
-# ==========================================
+@app.route("/attendance", methods=["GET"])
+def get_attendance():
+
+    try:
+
+        records = []
+
+        # -------------------------------------------------
+        # CREATE CSV IF NOT EXISTS
+        # -------------------------------------------------
+
+        if not os.path.exists(ATTENDANCE_FILE):
+
+            with open(
+                ATTENDANCE_FILE,
+                "w",
+                newline="",
+                encoding="utf-8"
+            ) as file:
+
+                writer = csv.writer(file)
+
+                writer.writerow([
+                    "Student Name",
+                    "Date",
+                    "Time",
+                    "Status"
+                ])
+
+            return jsonify({
+
+                "status": "success",
+
+                "records": [],
+
+                "count": 0
+
+            })
+
+        # -------------------------------------------------
+        # READ CSV
+        # -------------------------------------------------
+
+        with open(
+            ATTENDANCE_FILE,
+            "r",
+            newline="",
+            encoding="utf-8-sig"
+        ) as file:
+
+            reader = csv.DictReader(file)
+
+            for row in reader:
+
+                records.append({
+
+                    "Student Name":
+                        row.get(
+                            "Student Name",
+                            ""
+                        ).strip(),
+
+                    "Date":
+                        row.get(
+                            "Date",
+                            ""
+                        ).strip(),
+
+                    "Time":
+                        row.get(
+                            "Time",
+                            ""
+                        ).strip(),
+
+                    "Status":
+                        row.get(
+                            "Status",
+                            "Present"
+                        ).strip()
+
+                })
+
+        # -------------------------------------------------
+        # RESPONSE
+        # -------------------------------------------------
+
+        return jsonify({
+
+            "status": "success",
+
+            "records":
+                records,
+
+            "count":
+                len(records)
+
+        })
+
+    except Exception as e:
+
+        return jsonify({
+
+            "status": "error",
+
+            "records": [],
+
+            "message":
+                str(e)
+
+        }), 500
+
+
+# =========================================================
+# FACE RECOGNITION
+# =========================================================
 
 @app.route("/recognize", methods=["POST"])
 def recognize():
@@ -310,25 +481,45 @@ def recognize():
 
     try:
 
-        # -------------------------------
-        # Receive browser camera image
-        # -------------------------------
+        # -------------------------------------------------
+        # RECEIVE IMAGE
+        # -------------------------------------------------
 
         image = request.files.get("image")
 
         if image is None:
 
             return jsonify({
+
                 "status": "error",
+
                 "recognized": False,
+
                 "message":
                     "No camera image received."
+
             }), 400
 
+        # -------------------------------------------------
+        # CHECK RECOGNIZE.PY
+        # -------------------------------------------------
 
-        # -------------------------------
-        # Check model
-        # -------------------------------
+        if not os.path.exists(RECOGNIZE_FILE):
+
+            return jsonify({
+
+                "status": "error",
+
+                "recognized": False,
+
+                "message":
+                    "recognize.py not found."
+
+            }), 404
+
+        # -------------------------------------------------
+        # CHECK MODEL
+        # -------------------------------------------------
 
         trainer_file = os.path.join(
             MODEL_DIR,
@@ -340,37 +531,43 @@ def recognize():
             "labels.pkl"
         )
 
-
         if not os.path.exists(trainer_file):
 
             return jsonify({
-                "status": "error",
-                "recognized": False,
-                "message":
-                    "trainer.yml not found."
-            }), 400
 
+                "status": "error",
+
+                "recognized": False,
+
+                "message":
+                    "trainer.yml not found. "
+                    "Please train the model."
+
+            }), 400
 
         if not os.path.exists(labels_file):
 
             return jsonify({
+
                 "status": "error",
+
                 "recognized": False,
+
                 "message":
-                    "labels.pkl not found."
+                    "labels.pkl not found. "
+                    "Please train the model."
+
             }), 400
 
-
-        # -------------------------------
-        # Save browser image
-        # -------------------------------
+        # -------------------------------------------------
+        # SAVE TEMP IMAGE
+        # -------------------------------------------------
 
         image.save(temp_image)
 
-
-        # -------------------------------
-        # Run recognition
-        # -------------------------------
+        # -------------------------------------------------
+        # RUN RECOGNITION
+        # -------------------------------------------------
 
         result = subprocess.run(
 
@@ -389,22 +586,25 @@ def recognize():
             timeout=60
         )
 
+        # -------------------------------------------------
+        # GET OUTPUT
+        # -------------------------------------------------
 
         output = result.stdout.strip()
 
+        error_output = result.stderr.strip()
 
-        # -------------------------------
-        # Delete temporary image
-        # -------------------------------
+        # -------------------------------------------------
+        # REMOVE TEMP IMAGE
+        # -------------------------------------------------
 
         if os.path.exists(temp_image):
 
             os.remove(temp_image)
 
-
-        # -------------------------------
-        # Recognition script error
-        # -------------------------------
+        # -------------------------------------------------
+        # RECOGNITION SCRIPT ERROR
+        # -------------------------------------------------
 
         if result.returncode != 0:
 
@@ -418,37 +618,90 @@ def recognize():
                     "Face recognition failed.",
 
                 "error":
-                    result.stderr,
+                    error_output,
 
                 "output":
                     output
 
             }), 500
 
+        # =================================================
+        # PARSE RECOGNITION OUTPUT
+        # =================================================
 
-        # -------------------------------
-        # RECOGNIZED
-        # -------------------------------
+        student_name = ""
 
-        if output.startswith("RECOGNIZED:"):
+        confidence = None
 
-            student_name = (
-                output
-                .replace(
-                    "RECOGNIZED:",
-                    "",
-                    1
+        lines = output.splitlines()
+
+        # -------------------------------------------------
+        # READ EACH OUTPUT LINE
+        # -------------------------------------------------
+
+        for line in lines:
+
+            line = line.strip()
+
+            # ---------------------------------------------
+            # RECOGNIZED NAME
+            # ---------------------------------------------
+
+            if line.startswith("RECOGNIZED:"):
+
+                student_name = (
+                    line
+                    .replace(
+                        "RECOGNIZED:",
+                        "",
+                        1
+                    )
+                    .strip()
                 )
-                .strip()
-            )
 
+            # ---------------------------------------------
+            # CONFIDENCE
+            # ---------------------------------------------
 
-            # Mark attendance
+            elif line.startswith("CONFIDENCE:"):
+
+                confidence_text = (
+                    line
+                    .replace(
+                        "CONFIDENCE:",
+                        "",
+                        1
+                    )
+                    .strip()
+                )
+
+                try:
+
+                    confidence = float(
+                        confidence_text
+                    )
+
+                except ValueError:
+
+                    confidence = None
+
+        # =================================================
+        # FACE RECOGNIZED
+        # =================================================
+
+        if student_name:
+
+            # -------------------------------------------------
+            # MARK ATTENDANCE
+            # -------------------------------------------------
 
             newly_marked = mark_attendance(
                 student_name
             )
 
+            # -------------------------------------------------
+            # MESSAGE
+            # -------------------------------------------------
 
             if newly_marked:
 
@@ -464,15 +717,23 @@ def recognize():
                     "Attendance was already marked today."
                 )
 
+            # -------------------------------------------------
+            # RESPONSE
+            # -------------------------------------------------
 
             return jsonify({
 
-                "status": "success",
+                "status":
+                    "success",
 
-                "recognized": True,
+                "recognized":
+                    True,
 
                 "student_name":
                     student_name,
+
+                "confidence":
+                    confidence,
 
                 "attendance_marked":
                     newly_marked,
@@ -485,16 +746,17 @@ def recognize():
 
             })
 
-
-        # -------------------------------
-        # UNKNOWN
-        # -------------------------------
+        # =================================================
+        # FACE NOT RECOGNIZED
+        # =================================================
 
         return jsonify({
 
-            "status": "success",
+            "status":
+                "success",
 
-            "recognized": False,
+            "recognized":
+                False,
 
             "message":
                 "Face not recognized. "
@@ -505,6 +767,9 @@ def recognize():
 
         })
 
+    # =====================================================
+    # TIMEOUT ERROR
+    # =====================================================
 
     except subprocess.TimeoutExpired:
 
@@ -512,18 +777,22 @@ def recognize():
 
             os.remove(temp_image)
 
-
         return jsonify({
 
-            "status": "error",
+            "status":
+                "error",
 
-            "recognized": False,
+            "recognized":
+                False,
 
             "message":
                 "Face recognition timed out."
 
         }), 500
 
+    # =====================================================
+    # GENERAL ERROR
+    # =====================================================
 
     except Exception as e:
 
@@ -531,14 +800,32 @@ def recognize():
 
             os.remove(temp_image)
 
-
         return jsonify({
 
-            "status": "error",
+            "status":
+                "error",
 
-            "recognized": False,
+            "recognized":
+                False,
 
             "message":
                 str(e)
 
         }), 500
+
+
+# =========================================================
+# START SERVER
+# =========================================================
+
+if __name__ == "__main__":
+
+    app.run(
+
+        host="0.0.0.0",
+
+        port=5050,
+
+        debug=True
+
+    )
