@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Automated Attendance System - Rural Education</title>
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              300: '#6ee7b7',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            },
+            edu: {
+              navy: '#0f172a',
+              card: '#ffffff',
+              border: '#e2e8f0',
+              accent: '#3b82f6',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col selection:bg-brand-500 selection:text-white">
+
+  <!-- ========================================================================= -->
+  <!-- TOAST NOTIFICATION CONTAINER                                              -->
+  <!-- ========================================================================= -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col space-y-3 pointer-events-none"></div>
+
+  <!-- ========================================================================= -->
+  <!-- 1. LOGIN SCREEN CONTAINER (Visible when not logged in)                    -->
+  <!-- ========================================================================= -->
+  <div id="login-container" class="min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950">
+    <div class="max-w-5xl w-full bg-white rounded-3xl shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 border border-slate-700/30">
+      
+      <!-- Left Hero Banner Column with Digital Education Artwork -->
+      <div class="lg:col-span-6 relative bg-slate-900 overflow-hidden flex flex-col justify-between p-8 text-white min-h-[420px] lg:min-h-[640px]">
+        <!-- Background Image with Soft Gradient Overlay -->
+        <img src="/static/images/education_banner.jpg" alt="Digital Education Management System" class="absolute inset-0 w-full h-full object-cover opacity-35 transform hover:scale-105 transition-transform duration-700">
+        <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/70 to-emerald-950/60"></div>
+
+        <!-- Hero Top Header -->
+        <div class="relative z-10">
+          <div class="inline-flex items-center space-x-2.5 px-3.5 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-400/30 backdrop-blur-md mb-4 text-emerald-300 text-xs font-semibold tracking-wide">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            <span>Rural Education Transformation</span>
+          </div>
+          <h2 class="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+            Green Valley <span class="text-emerald-400">Rural School</span>
+          </h2>
+          <p class="mt-2 text-sm text-slate-300 leading-relaxed">
+            Empowering rural classrooms with automated digital attendance, real-time mid-day meal tracking, and instant parent connectivity.
+          </p>
+        </div>
+
+        <!-- Key Highlights Grid -->
+        <div class="relative z-10 grid grid-cols-2 gap-3 my-6">
+          <div class="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/10">
+            <div class="flex items-center space-x-2 text-emerald-400 font-semibold text-xs mb-1">
+              <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+              <span>One-Click Marking</span>
+            </div>
+            <p class="text-[11px] text-slate-300">Fast batch attendance for multi-grade rural classes.</p>
+          </div>
+          <div class="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/10">
+            <div class="flex items-center space-x-2 text-emerald-400 font-semibold text-xs mb-1">
+              <i data-lucide="message-square" class="w-3.5 h-3.5"></i>
+              <span>SMS Parent Alert</span>
+            </div>
+            <p class="text-[11px] text-slate-300">Automatic SMS notifications for student absences.</p>
+          </div>
+          <div class="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/10">
+            <div class="flex items-center space-x-2 text-emerald-400 font-semibold text-xs mb-1">
+              <i data-lucide="wifi-off" class="w-3.5 h-3.5"></i>
+              <span>Offline Ready</span>
+            </div>
+            <p class="text-[11px] text-slate-300">Seamless local cache when internet is down.</p>
+          </div>
+          <div class="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/10">
+            <div class="flex items-center space-x-2 text-emerald-400 font-semibold text-xs mb-1">
+              <i data-lucide="pie-chart" class="w-3.5 h-3.5"></i>
+              <span>Monthly Reports</span>
+            </div>
+            <p class="text-[11px] text-slate-300">Government compliant attendance registers & exports.</p>
+          </div>
+        </div>
+
+        <!-- Footer Caption -->
+        <div class="relative z-10 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+          <span>Digital Education System</span>
+          <span class="text-emerald-400 font-medium">U-DISE: 092405012</span>
+        </div>
+      </div>
+
+      <!-- Right Form Column -->
+      <div class="lg:col-span-6 p-8 sm:p-10 flex flex-col justify-between bg-white">
+        <div>
+          <!-- Title & Subtitle as requested -->
+          <div class="mb-6">
+            <div class="flex items-center space-x-3 mb-2">
+              <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-lg shadow-emerald-600/30">
+                <i data-lucide="calendar-check" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h1 class="text-2xl font-bold text-slate-900 leading-tight">Automated Attendance System</h1>
+                <p class="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Smart Attendance Management for Rural Schools</p>
+              </div>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">Sign in with your registered school credentials or select a quick demo role below.</p>
+          </div>
+
+          <!-- Login Form -->
+          <form id="login-form" class="space-y-4" onsubmit="event.preventDefault(); handleLogin();">
+            <div>
+              <label for="login-username" class="block text-xs font-semibold text-slate-700 mb-1.5">Username or Registered Email</label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <i data-lucide="user" class="w-4 h-4"></i>
+                </div>
+                <input type="text" id="login-username" required placeholder="e.g. admin, teacher, or user@greenvalley.edu" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all text-slate-800 placeholder-slate-400">
+              </div>
+            </div>
+
+            <div>
+              <label for="login-password" class="block text-xs font-semibold text-slate-700 mb-1.5">Password</label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <i data-lucide="lock" class="w-4 h-4"></i>
+                </div>
+                <input type="password" id="login-password" required placeholder="••••••••" class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all text-slate-800 placeholder-slate-400">
+                <button type="button" onclick="togglePasswordVisibility('login-password', this)" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none">
+                  <i data-lucide="eye" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between text-xs pt-1">
+              <label class="flex items-center space-x-2 cursor-pointer text-slate-600">
+                <input type="checkbox" id="login-remember" class="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                <span>Remember me</span>
+              </label>
+              <button type="button" onclick="openForgotPasswordModal()" class="font-medium text-emerald-600 hover:text-emerald-700 hover:underline">
+                Forgot password?
+              </button>
+            </div>
+
+            <button type="submit" id="btn-login" class="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm shadow-lg shadow-emerald-600/25 flex items-center justify-center space-x-2 transition-all transform active:scale-[0.98]">
+              <i data-lucide="log-in" class="w-4 h-4"></i>
+              <span>Sign In to Dashboard</span>
+            </button>
+          </form>
+
+          <!-- Quick 1-Click Role Login Selector -->
+          <div class="mt-6 pt-5 border-t border-slate-100">
+            <div class="flex items-center justify-between mb-2.5">
+              <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Quick Demo Login</span>
+              <span class="text-[10px] text-slate-400">Click any role to auto-fill</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <button type="button" onclick="fillDemoCredentials('admin', 'Admin@123')" class="px-2.5 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 flex items-center space-x-1.5 transition">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Admin</span>
+              </button>
+              <button type="button" onclick="fillDemoCredentials('principal', 'Principal@123')" class="px-2.5 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-xs font-semibold hover:bg-blue-100 flex items-center space-x-1.5 transition">
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                <span>Principal</span>
+              </button>
+              <button type="button" onclick="fillDemoCredentials('teacher', 'Teacher@123')" class="px-2.5 py-2 rounded-lg bg-purple-50 border border-purple-200 text-purple-800 text-xs font-semibold hover:bg-purple-100 flex items-center space-x-1.5 transition">
+                <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+                <span>Teacher</span>
+              </button>
+              <button type="button" onclick="fillDemoCredentials('student', 'Student@123')" class="px-2.5 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold hover:bg-amber-100 flex items-center space-x-1.5 transition">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span>Student</span>
+              </button>
+              <button type="button" onclick="fillDemoCredentials('parent', 'Parent@123')" class="px-2.5 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold hover:bg-rose-100 flex items-center space-x-1.5 transition col-span-2 sm:col-span-1">
+                <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+                <span>Parent</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-slate-100 text-center text-[11px] text-slate-400">
+          Designed for Rural Educational Institutions • Secure Offline Support Enabled
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 2. MAIN APPLICATION SHELL (Visible when logged in)                        -->
+  <!-- ========================================================================= -->
+  <div id="app-shell" class="hidden min-h-screen flex flex-col bg-slate-50">
+    
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 py-3 transition-all">
+      <div class="flex items-center justify-between max-w-7xl mx-auto">
+        
+        <!-- Left: Logo & Sidebar Toggle -->
+        <div class="flex items-center space-x-3">
+          <button id="sidebar-toggle-btn" onclick="toggleSidebar()" class="p-2 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:outline-none lg:hidden">
+            <i data-lucide="menu" class="w-5 h-5"></i>
+          </button>
+          
+          <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20 font-bold text-base">
+              <i data-lucide="graduation-cap" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <div class="flex items-center space-x-2">
+                <span class="font-extrabold text-slate-900 text-base tracking-tight leading-none">Green Valley</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 uppercase">Rural Model</span>
+              </div>
+              <p class="text-[11px] text-slate-500 font-medium">Automated Attendance System • 2026-2027</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Actions & User Chip -->
+        <div class="flex items-center space-x-3">
+          
+          <!-- Offline / Online Status Indicator Pill -->
+          <div id="connection-status-pill" class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="connection-status-text">Online (Sync Active)</span>
+          </div>
+
+          <!-- Notification Dropdown Button -->
+          <div class="relative">
+            <button onclick="toggleNotificationDropdown()" class="p-2 rounded-xl text-slate-600 hover:bg-slate-100 hover:text-slate-900 relative focus:outline-none">
+              <i data-lucide="bell" class="w-5 h-5"></i>
+              <span id="unread-notification-count" class="hidden absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">0</span>
+            </button>
+
+            <!-- Dropdown Menu -->
+            <div id="notification-dropdown" class="hidden absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 py-3 z-50 animate-fade-in">
+              <div class="px-4 pb-2 border-b border-slate-100 flex items-center justify-between">
+                <div class="flex items-center space-x-1.5">
+                  <i data-lucide="bell" class="w-4 h-4 text-emerald-600"></i>
+                  <span class="font-bold text-sm text-slate-800">Notifications & Alerts</span>
+                </div>
+                <button onclick="markAllNotificationsRead()" class="text-xs text-emerald-600 hover:underline font-semibold">Mark all read</button>
+              </div>
+              <div id="notifications-list" class="max-h-72 overflow-y-auto divide-y divide-slate-50 py-1">
+                <!-- Notifications loaded dynamically -->
+                <div class="p-4 text-center text-xs text-slate-400">Loading notifications...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Profile Dropdown -->
+          <div class="relative">
+            <button onclick="toggleUserDropdown()" class="flex items-center space-x-2.5 p-1.5 rounded-xl hover:bg-slate-100 transition focus:outline-none">
+              <div id="header-user-avatar" class="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 text-white flex items-center justify-center font-bold text-xs shadow">
+                U
+              </div>
+              <div class="text-left hidden md:block">
+                <div id="header-user-name" class="text-xs font-bold text-slate-800 leading-tight">User Name</div>
+                <div id="header-user-role" class="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">Role</div>
+              </div>
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400 hidden md:block"></i>
+            </button>
+
+            <!-- User Menu Dropdown -->
+            <div id="user-dropdown" class="hidden absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl border border-slate-100 py-2 z-50 animate-fade-in">
+              <div class="px-4 py-2 border-b border-slate-100">
+                <p id="dropdown-user-email" class="text-xs text-slate-500 truncate">user@greenvalleyschool.edu.in</p>
+              </div>
+              <button onclick="navigateTo('settings'); closeAllDropdowns();" class="w-full px-4 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center space-x-2">
+                <i data-lucide="settings" class="w-4 h-4 text-slate-400"></i>
+                <span>Profile & Settings</span>
+              </button>
+              <button onclick="navigateTo('notifications'); closeAllDropdowns();" class="w-full px-4 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center space-x-2">
+                <i data-lucide="message-square" class="w-4 h-4 text-slate-400"></i>
+                <span>SMS Alerts Log</span>
+              </button>
+              <div class="border-t border-slate-100 my-1"></div>
+              <button onclick="handleLogout()" class="w-full px-4 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center space-x-2">
+                <i data-lucide="log-out" class="w-4 h-4 text-rose-500"></i>
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </header>
+
+    <!-- Main Body Layout: Sidebar + Viewport -->
+    <div class="flex-1 flex max-w-7xl w-full mx-auto px-2 sm:px-4 lg:px-6 py-4 gap-6">
+      
+      <!-- Left Sidebar Navigation -->
+      <aside id="app-sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 lg:static lg:block lg:w-60 lg:border lg:rounded-3xl lg:shadow-sm lg:p-3 transition-transform transform -translate-x-full lg:translate-x-0 overflow-y-auto">
+        
+        <!-- Mobile Sidebar Header -->
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between lg:hidden">
+          <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold">
+              <i data-lucide="graduation-cap" class="w-4 h-4"></i>
+            </div>
+            <span class="font-bold text-slate-800 text-sm">Attendance System</span>
+          </div>
+          <button onclick="toggleSidebar()" class="p-1 text-slate-400 hover:text-slate-700">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <!-- Navigation Links (Dynamic per role) -->
+        <nav class="space-y-1 p-2" id="sidebar-nav-items">
+          <!-- Populated by renderSidebar() -->
+        </nav>
+
+        <!-- Rural School Quick Info Widget at Bottom of Sidebar -->
+        <div class="p-3 mt-4 mx-2 rounded-2xl bg-gradient-to-br from-emerald-900 to-slate-900 text-white text-xs">
+          <div class="flex items-center space-x-2 text-emerald-400 font-bold mb-1">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+            <span>Rural Sync Ready</span>
+          </div>
+          <p class="text-[11px] text-slate-300 leading-snug">Auto-caching attendance when cellular network drops.</p>
+        </div>
+      </aside>
+
+      <!-- Overlay for mobile sidebar -->
+      <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-900/50 z-30 hidden lg:hidden"></div>
+
+      <!-- Center View Content Container -->
+      <main id="main-content" class="flex-1 min-w-0 pb-16 lg:pb-6">
+        <!-- Rendered dynamically by active view route -->
+      </main>
+
+    </div>
+
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 3. MODALS CONTAINER                                                       -->
+  <!-- ========================================================================= -->
+
+  <!-- Forgot Password Modal -->
+  <div id="modal-forgot-password" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl animate-fade-in border border-slate-100">
+      <div class="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-4">
+        <i data-lucide="key-round" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-lg font-bold text-slate-900">Reset Password</h3>
+      <p class="text-xs text-slate-500 mt-1">Enter your registered username or email to receive password reset guidance.</p>
+      
+      <form class="mt-4 space-y-3" onsubmit="event.preventDefault(); handleForgotPassword();">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Username or Registered Email</label>
+          <input type="text" id="forgot-identifier" required placeholder="e.g. admin or teacher@greenvalleyschool.edu.in" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        </div>
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-800">
+          <strong>Demo Notice:</strong> For testing, default passwords for all seeded accounts are formatted as <code>Role@123</code> (e.g. <code>Admin@123</code>, <code>Teacher@123</code>, <code>Student@123</code>, <code>Parent@123</code>).
+        </div>
+        <div class="flex items-center space-x-2 pt-2">
+          <button type="button" onclick="closeForgotPasswordModal()" class="w-1/2 py-2.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">Cancel</button>
+          <button type="submit" class="w-1/2 py-2.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition">Submit Request</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add/Edit Student Modal -->
+  <div id="modal-student" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl animate-fade-in border border-slate-100 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 id="modal-student-title" class="text-base font-bold text-slate-900">Add New Student</h3>
+        <button onclick="closeStudentModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form id="student-form" class="mt-4 space-y-4" onsubmit="event.preventDefault(); saveStudentForm();">
+        <input type="hidden" id="student-form-id">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
+            <input type="text" id="student-name" required placeholder="e.g. Aarav Patel" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Gender *</label>
+            <select id="student-gender" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Date of Birth *</label>
+            <input type="date" id="student-dob" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Class *</label>
+            <select id="student-class-id" required class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              <!-- Loaded dynamically -->
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Section *</label>
+            <input type="text" id="student-section" required value="A" placeholder="e.g. A" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Roll Number *</label>
+            <input type="text" id="student-roll" required placeholder="e.g. 01" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Parent / Guardian Name</label>
+            <input type="text" id="student-parent-name" placeholder="e.g. Pooja Patel" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Parent Phone (SMS Alerts)</label>
+            <input type="text" id="student-parent-phone" placeholder="e.g. +91 98765 00007" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Village / Residential Address</label>
+          <textarea id="student-address" rows="2" placeholder="e.g. House No 12, Rampur Village" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"></textarea>
+        </div>
+        <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeStudentModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition">Save Student</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add/Edit Teacher Modal -->
+  <div id="modal-teacher" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl animate-fade-in border border-slate-100 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 id="modal-teacher-title" class="text-base font-bold text-slate-900">Add New Teacher</h3>
+        <button onclick="closeTeacherModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form id="teacher-form" class="mt-4 space-y-4" onsubmit="event.preventDefault(); saveTeacherForm();">
+        <input type="hidden" id="teacher-form-id">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
+            <input type="text" id="teacher-name" required placeholder="e.g. Sunita Devi" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Email Address *</label>
+            <input type="email" id="teacher-email" required placeholder="e.g. sunita@greenvalleyschool.edu.in" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Phone Number *</label>
+            <input type="text" id="teacher-phone" required placeholder="e.g. +91 98765 00003" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Primary Subject</label>
+            <input type="text" id="teacher-subject" placeholder="e.g. Mathematics, Science" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Qualification</label>
+            <input type="text" id="teacher-qualification" placeholder="e.g. M.Sc, B.Ed" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Status</label>
+            <select id="teacher-status" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Address</label>
+          <textarea id="teacher-address" rows="2" placeholder="e.g. Rampur Rural Zone" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"></textarea>
+        </div>
+        <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeTeacherModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition">Save Teacher</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add/Edit Class Modal -->
+  <div id="modal-class" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl animate-fade-in border border-slate-100">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <h3 id="modal-class-title" class="text-base font-bold text-slate-900">Add New Class</h3>
+        <button onclick="closeClassModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <form id="class-form" class="mt-4 space-y-3" onsubmit="event.preventDefault(); saveClassForm();">
+        <input type="hidden" id="class-form-id">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Class / Grade Name *</label>
+          <input type="text" id="class-name" required placeholder="e.g. Class 8" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Section *</label>
+            <input type="text" id="class-section" required value="A" placeholder="e.g. A" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Room No</label>
+            <input type="text" id="class-room" placeholder="e.g. Room 201" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Class Teacher</label>
+          <select id="class-teacher-id" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none">
+            <!-- Loaded dynamically -->
+          </select>
+        </div>
+        <div class="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeClassModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition">Save Class</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Core JavaScript Application Logic -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
